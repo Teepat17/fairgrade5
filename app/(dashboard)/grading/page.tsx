@@ -13,6 +13,9 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { useToast } from "@/components/ui/use-toast"
 import { FileUploader } from "@/components/grading/file-uploader"
 import { RubricSelector } from "@/components/grading/rubric-selector"
+import { StudentPreview } from "@/components/grading/student-preview"
+import { saveGradingSession, fileToBase64 } from "@/lib/storage"
+import { initializeOCR, processStudentAnswers, processImage } from "@/lib/processing"
 
 export default function GradingPage() {
   const [activeTab, setActiveTab] = useState("upload")
@@ -22,6 +25,20 @@ export default function GradingPage() {
   const [rubricFile, setRubricFile] = useState<File | null>(null)
   const [useTemplateRubric, setUseTemplateRubric] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [showPreview, setShowPreview] = useState(false)
+  const [gradingResults, setGradingResults] = useState<Array<{
+    id: string;
+    name: string;
+    score: number;
+    feedback: string;
+    criteria: Array<{
+      name: string;
+      score: number;
+      maxScore: number;
+      feedback: string;
+    }>;
+  }> | null>(null)
+  const [rubricText, setRubricText] = useState<string>("")
 
   const router = useRouter()
   const { toast } = useToast()
@@ -44,6 +61,10 @@ export default function GradingPage() {
     if (value === "template") {
       setRubricFile(null)
     }
+  }
+
+  const handleRubricChange = (newRubricText: string) => {
+    setRubricText(newRubricText)
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -76,31 +97,79 @@ export default function GradingPage() {
       return
     }
 
+    handleStartGrading()
+  }
+
+  const handleStartGrading = async () => {
     setIsSubmitting(true)
 
     try {
-      // In a real application, you would upload files to your server here
-      // and start the AI grading process
+      // Initialize OCR
+      await initializeOCR()
 
-      // Simulate processing delay
-      await new Promise((resolve) => setTimeout(resolve, 2000))
+      // Get rubric text - now using the stored rubricText
+      const currentRubricText = rubricFile ? await processImage(rubricFile) : rubricText
+
+      if (!currentRubricText) {
+        toast({
+          title: "Rubric required",
+          description: "Please either upload a rubric or select criteria",
+          variant: "destructive",
+        })
+        return
+      }
+
+      // Process student answers
+      const results = await processStudentAnswers(studentFiles, currentRubricText)
+      setGradingResults(results)
+
+      // Create grading session
+      const sessionId = `session-${Date.now()}`
+      const session = {
+        id: sessionId,
+        subject,
+        sessionName,
+        studentFiles: await Promise.all(studentFiles.map(file => fileToBase64(file))),
+        rubricFile: rubricFile ? await fileToBase64(rubricFile) : null,
+        rubricText: currentRubricText,
+        useTemplateRubric,
+        results,
+        createdAt: new Date().toISOString(),
+      }
+
+      // Save to localStorage
+      saveGradingSession(session)
 
       toast({
-        title: "Grading started",
-        description: "Your files have been uploaded and grading has begun",
+        title: "Grading completed",
+        description: "Your files have been processed and graded",
       })
 
-      // Navigate to a results page with a mock ID
-      router.push(`/grading/results/session-${Date.now()}`)
+      // Show results
+      setShowPreview(true)
     } catch (error) {
+      console.error("Grading error:", error)
       toast({
         title: "Error",
-        description: "There was an error starting the grading process",
+        description: "There was an error processing the files",
         variant: "destructive",
       })
     } finally {
       setIsSubmitting(false)
     }
+  }
+
+  // Helper function to get template rubric
+  const getTemplateRubric = (subject: string) => {
+    const templates: Record<string, string> = {
+      english: `Thesis and argument development (30%)
+Evidence and supporting details (25%)
+Organization and structure (20%)
+Grammar and mechanics (15%)
+Style and voice (10%)`,
+      // Add more templates for other subjects
+    }
+    return templates[subject] || ""
   }
 
   const subjects = [
@@ -231,7 +300,12 @@ export default function GradingPage() {
                             Select a pre-defined template for{" "}
                             {subject ? subjects.find((s) => s.id === subject)?.name : "the selected subject"}
                           </p>
-                          {useTemplateRubric && subject && <RubricSelector subject={subject} />}
+                          {useTemplateRubric && subject && (
+                            <RubricSelector 
+                              subject={subject} 
+                              onRubricChange={handleRubricChange}
+                            />
+                          )}
                         </div>
                       </div>
                     </RadioGroup>
@@ -297,6 +371,17 @@ export default function GradingPage() {
           </div>
         </div>
       </form>
+
+      {/* Modified StudentPreview with results */}
+      {studentFiles.length > 0 && (
+        <StudentPreview
+          files={studentFiles}
+          isOpen={showPreview}
+          onClose={() => setShowPreview(false)}
+          gradingResults={gradingResults}
+          showResults={!!gradingResults}
+        />
+      )}
     </div>
   )
 }

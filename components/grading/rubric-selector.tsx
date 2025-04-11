@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from 'react';
 import { Card, CardContent } from "@/components/ui/card"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
@@ -16,15 +16,99 @@ import {
 } from "@/components/ui/dialog"
 import { Textarea } from "@/components/ui/textarea"
 import { Pencil } from "lucide-react"
+import { Input } from "@/components/ui/input"
 
 interface RubricSelectorProps {
   subject: string
+  onRubricChange: (rubric: string) => void
 }
 
-export function RubricSelector({ subject }: RubricSelectorProps) {
+interface RubricCriterion {
+  name: string
+  weight: number
+}
+
+export function RubricSelector({ subject, onRubricChange }: RubricSelectorProps) {
   const [selectedRubric, setSelectedRubric] = useState<string | null>(null)
   const [customizedRubric, setCustomizedRubric] = useState<string>("")
   const [isCustomizing, setIsCustomizing] = useState(false)
+  const [criteria, setCriteria] = useState<RubricCriterion[]>([])
+  const [isEditing, setIsEditing] = useState(false)
+
+  // Initialize with default criteria based on subject
+  useEffect(() => {
+    const defaultCriteria = getDefaultCriteria(subject)
+    setCriteria(defaultCriteria)
+    updateRubricText(defaultCriteria)
+  }, [subject])
+
+  const getDefaultCriteria = (subject: string): RubricCriterion[] => {
+    switch (subject.toLowerCase()) {
+      case 'english':
+        return [
+          { name: 'Thesis and argument development', weight: 30 },
+          { name: 'Evidence and supporting details', weight: 25 },
+          { name: 'Organization and structure', weight: 20 },
+          { name: 'Grammar and mechanics', weight: 15 },
+          { name: 'Style and voice', weight: 10 }
+        ]
+      case 'math':
+        return [
+          { name: 'Problem solving approach', weight: 35 },
+          { name: 'Calculations accuracy', weight: 30 },
+          { name: 'Show working steps', weight: 25 },
+          { name: 'Final answer presentation', weight: 10 }
+        ]
+      // Add more subjects as needed
+      default:
+        return [
+          { name: 'Content understanding', weight: 40 },
+          { name: 'Analysis and reasoning', weight: 30 },
+          { name: 'Organization', weight: 20 },
+          { name: 'Presentation', weight: 10 }
+        ]
+    }
+  }
+
+  const updateRubricText = (currentCriteria: RubricCriterion[]) => {
+    const rubricText = currentCriteria
+      .map(criterion => `${criterion.name} (${criterion.weight}%)`)
+      .join('\n')
+    onRubricChange(rubricText)
+  }
+
+  const handleWeightChange = (index: number, newWeight: number) => {
+    const newCriteria = [...criteria]
+    newCriteria[index].weight = Math.min(100, Math.max(0, newWeight))
+    setCriteria(newCriteria)
+  }
+
+  const handleNameChange = (index: number, newName: string) => {
+    const newCriteria = [...criteria]
+    newCriteria[index].name = newName
+    setCriteria(newCriteria)
+  }
+
+  const handleSave = () => {
+    // Validate total weight is 100%
+    const totalWeight = criteria.reduce((sum, criterion) => sum + criterion.weight, 0)
+    if (totalWeight !== 100) {
+      alert('Total weight must equal 100%')
+      return
+    }
+    
+    updateRubricText(criteria)
+    setIsEditing(false)
+  }
+
+  const addCriterion = () => {
+    setCriteria([...criteria, { name: 'New criterion', weight: 0 }])
+  }
+
+  const removeCriterion = (index: number) => {
+    const newCriteria = criteria.filter((_, i) => i !== index)
+    setCriteria(newCriteria)
+  }
 
   // Mock rubric templates based on subject
   const getRubricTemplates = (subject: string) => {
@@ -152,19 +236,76 @@ export function RubricSelector({ subject }: RubricSelectorProps) {
 
   return (
     <div className="space-y-4">
-      <RadioGroup value={selectedRubric || ""} onValueChange={setSelectedRubric}>
-        {rubricTemplates.map((rubric) => (
-          <div key={rubric.id} className="flex items-start space-x-2">
-            <RadioGroupItem value={rubric.id} id={`rubric-${rubric.id}`} />
-            <div className="grid gap-1">
-              <Label htmlFor={`rubric-${rubric.id}`} className="font-medium">
-                {rubric.name}
-              </Label>
-              <p className="text-sm text-muted-foreground">{rubric.description}</p>
+      {!isEditing ? (
+        <div className="space-y-4">
+          {criteria.map((criterion, index) => (
+            <div key={index} className="flex justify-between items-center">
+              <span>{criterion.name}</span>
+              <span className="font-medium">{criterion.weight}%</span>
             </div>
+          ))}
+          <Button 
+            type="button" 
+            variant="outline" 
+            className="w-full mt-4"
+            onClick={() => setIsEditing(true)}
+          >
+            Edit Criteria
+          </Button>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {criteria.map((criterion, index) => (
+            <div key={index} className="grid gap-2">
+              <div className="flex items-center gap-2">
+                <div className="flex-1">
+                  <Label>Criterion Name</Label>
+                  <Input
+                    value={criterion.name}
+                    onChange={(e) => handleNameChange(index, e.target.value)}
+                    placeholder="Enter criterion name"
+                  />
+                </div>
+                <div className="w-24">
+                  <Label>Weight (%)</Label>
+                  <Input
+                    type="number"
+                    value={criterion.weight}
+                    onChange={(e) => handleWeightChange(index, parseInt(e.target.value) || 0)}
+                    min="0"
+                    max="100"
+                  />
+                </div>
+                <Button
+                  type="button"
+                  variant="destructive"
+                  className="mt-6"
+                  onClick={() => removeCriterion(index)}
+                >
+                  Remove
+                </Button>
+              </div>
+            </div>
+          ))}
+          <div className="flex gap-2 mt-4">
+            <Button
+              type="button"
+              variant="outline"
+              className="flex-1"
+              onClick={addCriterion}
+            >
+              Add Criterion
+            </Button>
+            <Button
+              type="button"
+              className="flex-1"
+              onClick={handleSave}
+            >
+              Save Changes
+            </Button>
           </div>
-        ))}
-      </RadioGroup>
+        </div>
+      )}
 
       {selectedRubricTemplate && (
         <Card>
