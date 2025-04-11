@@ -11,36 +11,48 @@ interface GradingSession {
   createdAt: string;
 }
 
-const STORAGE_KEY = 'fairgrade_sessions';
+const DB_NAME = 'fairgrade_db';
+const STORE_NAME = 'grading_sessions';
 
-export function saveGradingSession(session: GradingSession) {
-  const sessions = getAllGradingSessions();
-  sessions.push(session);
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions));
+// Initialize the database
+async function initDB() {
+  return openDB(DB_NAME, 1, {
+    upgrade(db) {
+      if (!db.objectStoreNames.contains(STORE_NAME)) {
+        db.createObjectStore(STORE_NAME, { keyPath: 'id' });
+      }
+    },
+  });
 }
 
-export function getGradingSession(id: string) {
-  const sessions = getAllGradingSessions();
-  return sessions.find(session => session.id === id);
+export async function saveGradingSession(session: GradingSession) {
+  const db = await initDB();
+  await db.put(STORE_NAME, session);
 }
 
-export function getAllGradingSessions(): GradingSession[] {
-  const sessions = localStorage.getItem(STORAGE_KEY);
-  return sessions ? JSON.parse(sessions) : [];
+export async function getGradingSession(id: string) {
+  const db = await initDB();
+  return db.get(STORE_NAME, id);
 }
 
-export function deleteGradingSession(id: string) {
-  const sessions = getAllGradingSessions().filter(session => session.id !== id);
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions));
+export async function getAllGradingSessions(): Promise<GradingSession[]> {
+  const db = await initDB();
+  return db.getAll(STORE_NAME);
+}
+
+export async function deleteGradingSession(id: string) {
+  const db = await initDB();
+  await db.delete(STORE_NAME, id);
 }
 
 // Function to convert File to base64
-export function fileToBase64(file: File): Promise<string> {
+export async function fileToBase64(file: File): Promise<string> {
+  const db = await initDB();
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    reader.readAsDataURL(file);
     reader.onload = () => resolve(reader.result as string);
-    reader.onerror = error => reject(error);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
   });
 }
 

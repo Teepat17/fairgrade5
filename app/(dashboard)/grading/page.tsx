@@ -137,8 +137,8 @@ export default function GradingPage() {
         createdAt: new Date().toISOString(),
       }
 
-      // Save to localStorage
-      saveGradingSession(session)
+      // Save to IndexedDB
+      await saveGradingSession(session)
 
       toast({
         title: "Grading completed",
