@@ -176,26 +176,13 @@ async function gradeCriterion(answer: File, criterionName: string, maxScore: num
   feedback: string;
 }> {
   try {
-    const prompt = `You are an expert ${subject} grader. Evaluate this essay based on: ${criterionName}
-
-Format your response EXACTLY as follows (do not add any extra text or explanations):
-
-SCORE: [number between 0 and ${maxScore}]
-
-STRENGTHS:
-• [key point]
-• [key point]
-
-WEAKNESSES:
-• [key point]
-• [key point]
-
-ANALYSIS:
-[2-3 sentences max]
-
-SUGGESTIONS:
-• [1-2 key improvements]
-• [1-2 key improvements]`;
+    const prompt = `You are an expert ${subject} grader. Evaluate this essay based on: ${criterionName}\n\n`
+      + `Format your response in exactly this structure:\n\n`
+      + `SCORE: [number between 0 and ${maxScore}]\n`
+      + `STRENGTHS:\n• [point 1]\n• [point 2]\n\n`
+      + `WEAKNESSES:\n• [point 1]\n• [point 2]\n\n`
+      + `ANALYSIS:\n[2-3 sentences max]\n\n`
+      + `SUGGESTIONS:\n• [point 1]\n• [point 2]`;
     
     const response = await callAIAPIWithFile(answer, prompt);
     
@@ -212,38 +199,51 @@ SUGGESTIONS:
       throw new Error('AI response contained an invalid score');
     }
 
-    // Split the response into sections and format each section
-    const sections = response.split(/(?=SCORE:|STRENGTHS:|WEAKNESSES:|ANALYSIS:|SUGGESTIONS:)/i);
-    const formattedSections = sections.map(section => {
-      section = section.trim();
-    
-      // Insert a line break after each section header
-      var section = section.replace(/^(SCORE:.*)/i, '\n$1\n');
-      var section = section.replace(/^(STRENGTHS:)/i, '\n$1\n');
-      var section = section.replace(/^(WEAKNESSES:)/i, '\n$1\n');
-      var section = section.replace(/^(ANALYSIS:)/i, '\n$1\n');
-      var section = section.replace(/^(SUGGESTIONS:)/i, '\n$1\n');
-    
-      // Format bullet points
-      section = section.replace(/[•\-]\s*/g, '• ');
-      section = section.replace(/(•[^\n]+)/g, '$1\n');
-    
-      return section.trim();
-    });
-    
+    // Split the response into sections and clean up
+    const sections = response.split(/(?=SCORE:|STRENGTHS:|WEAKNESSES:|ANALYSIS:|SUGGESTIONS:)/i)
+      .filter(Boolean)
+      .map(section => section.trim());
 
-    // Join sections with double line breaks
-    let formattedFeedback = formattedSections.join('\n\n').trim();
-    
-    // Clean up any excessive line breaks
-    formattedFeedback = formattedFeedback
+    // Format bullet points for each section
+    const formatBulletPoints = (text: string) => {
+      return text
+        .split(/[•*]\s*/)  // Split on either • or * bullets
+        .filter(Boolean)
+        .map(point => point.trim())
+        .filter(point => point.length > 0)  // Remove empty points
+        .map(point => `  • ${point}`)  // Add consistent bullet point format
+        .join('\n');
+    };
+
+    // Extract and format each section
+    const formattedSections = sections.map(section => {
+      if (section.startsWith('SCORE:')) {
+        return `SCORE:${section.replace('SCORE:', '').trim()}`;
+      }
+      
+      const [header, ...content] = section.split('\n');
+      const sectionContent = content.join(' ').trim();
+      
+      if (header.includes('ANALYSIS:')) {
+        return `ANALYSIS:\n  ${sectionContent}`;
+      }
+      
+      if (header.includes('STRENGTHS:') || header.includes('WEAKNESSES:') || header.includes('SUGGESTIONS:')) {
+        return `${header}\n${formatBulletPoints(sectionContent)}`;
+      }
+      
+      return section;
+    });
+
+    // Join sections with proper spacing
+    const formattedFeedback = formattedSections
+      .join('\n\n')
       .replace(/\n{3,}/g, '\n\n')
-      .replace(/\n\s+\n/g, '\n\n')
       .trim();
 
     return {
       score: score,
-      feedback: formattedFeedback,
+      feedback: formattedFeedback
     };
   } catch (error: unknown) {
     console.error('AI grading error:', error);

@@ -95,8 +95,8 @@ export function StudentDetails({ data, selectedStudent, onSelectStudent }: Stude
 
                       <div>
                         <h4 className="mb-1 text-sm font-medium text-muted-foreground">AI Feedback:</h4>
-                        <div className="rounded-md bg-primary/5 p-3">
-                          <p className="text-sm">{item.explanation}</p>
+                        <div className="rounded-md bg-primary/5 p-3 whitespace-pre-wrap">
+                          <p className="text-sm">{item.feedback || item.explanation}</p>
                         </div>
                       </div>
                     </CardContent>
