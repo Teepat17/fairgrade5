@@ -95,10 +95,10 @@ async function callAIAPI(prompt: string): Promise<string> {
 // Function to call the AI API with file
 async function callAIAPIWithFile(file: File, prompt: string): Promise<string> {
   const API_KEY = process.env.NEXT_PUBLIC_AI_API_KEY;
-  const API_URL = process.env.NEXT_PUBLIC_AI_API_URL;
+  const API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro-vision:generateContent";
 
-  if (!API_KEY || !API_URL) {
-    throw new Error('AI API configuration missing. Please check your .env.local file.');
+  if (!API_KEY) {
+    throw new Error('AI API key missing. Please check your .env.local file.');
   }
 
   // Convert file to base64
