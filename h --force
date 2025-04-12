@@ -1,0 +1,27 @@
+warning: in the working copy of 'lib/processing.ts', LF will be replaced by CRLF the next time Git touches it
+[1mdiff --git a/.gitignore b/.gitignore[m
+[1mindex 8e7326f..a374fac 100644[m
+[1m--- a/.gitignore[m
+[1m+++ b/.gitignore[m
+[36m@@ -16,7 +16,7 @@[m [myarn-debug.log*[m
+ yarn-error.log*[m
+ .pnpm-debug.log*[m
+ [m
+[31m-[m
+[32m+[m[32m.env.local[m
+ [m
+ # vercel[m
+ .vercel[m
+[1mdiff --git a/lib/processing.ts b/lib/processing.ts[m
+[1mindex 9492a37..0bbac88 100644[m
+[1m--- a/lib/processing.ts[m
+[1m+++ b/lib/processing.ts[m
+[36m@@ -95,7 +95,7 @@[m [masync function callAIAPI(prompt: string): Promise<string> {[m
+ // Function to call the AI API with file[m
+ async function callAIAPIWithFile(file: File, prompt: string): Promise<string> {[m
+   const API_KEY = process.env.NEXT_PUBLIC_AI_API_KEY;[m
+[31m-  const API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro-vision:generateContent";[m
+[32m+[m[32m  const API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=GEMINI_API_KEY";[m
+ [m
+   if (!API_KEY) {[m
+     throw new Error('AI API key missing. Please check your .env.local file.');[m

@@ -95,7 +95,7 @@ async function callAIAPI(prompt: string): Promise<string> {
 // Function to call the AI API with file
 async function callAIAPIWithFile(file: File, prompt: string): Promise<string> {
   const API_KEY = process.env.NEXT_PUBLIC_AI_API_KEY;
-  const API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro-vision:generateContent";
+  const API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
 
   if (!API_KEY) {
     throw new Error('AI API key missing. Please check your .env.local file.');
@@ -217,7 +217,7 @@ async function gradeCriterion(answer: File, criterionName: string, maxScore: num
       score: score,
       feedback: response,
     };
-  } catch (error) {
+  } catch (error: any) {
     console.error('AI grading error:', error);
     // Return a more informative error message
     return {
