@@ -49,8 +49,7 @@ export function RubricSelector({ subject, onRubricChange }: RubricSelectorProps)
           { name: 'Thesis and argument development', weight: 30 },
           { name: 'Evidence and supporting details', weight: 25 },
           { name: 'Organization and structure', weight: 20 },
-          { name: 'Grammar and mechanics', weight: 15 },
-          { name: 'Style and voice', weight: 10 }
+          { name: 'Grammar and mechanics', weight: 25 }
         ]
       case 'math':
         return [
