@@ -214,19 +214,26 @@ SUGGESTIONS:
     
     // Format the feedback with proper line breaks and bullet points
     let formattedFeedback = response
-      // Ensure proper spacing after headers
+      // Extract each section
       .replace(/SCORE:\s*(\d+)/i, 'SCORE: $1\n\n')
-      .replace(/STRENGTHS:/i, '\nSTRENGTHS:\n')
-      .replace(/WEAKNESSES:/i, '\nWEAKNESSES:\n')
-      .replace(/ANALYSIS:/i, '\nANALYSIS:\n')
-      .replace(/SUGGESTIONS:/i, '\nSUGGESTIONS:\n')
-      // Standardize bullet points
+      .replace(/STRENGTHS:/i, '\n\nSTRENGTHS:\n')
+      .replace(/WEAKNESSES:/i, '\n\nWEAKNESSES:\n')
+      .replace(/ANALYSIS:/i, '\n\nANALYSIS:\n')
+      .replace(/SUGGESTIONS:/i, '\n\nSUGGESTIONS:\n')
+      // Standardize bullet points and ensure proper spacing
       .replace(/[•\-]\s*/g, '• ')
-      // Ensure proper spacing after bullet points
       .replace(/(•\s*[^\n]+)/g, '$1\n')
-      // Clean up extra whitespace
+      // Clean up extra whitespace while preserving section breaks
       .replace(/\n{3,}/g, '\n\n')
       .trim();
+    
+    // Ensure there's a double line break between sections
+    formattedFeedback = formattedFeedback
+      .replace(/SCORE: (\d+)/, 'SCORE: $1\n\n')
+      .replace(/STRENGTHS:/, '\n\nSTRENGTHS:')
+      .replace(/WEAKNESSES:/, '\n\nWEAKNESSES:')
+      .replace(/ANALYSIS:/, '\n\nANALYSIS:')
+      .replace(/SUGGESTIONS:/, '\n\nSUGGESTIONS:');
     
     return {
       score: score,
