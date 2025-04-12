@@ -182,7 +182,14 @@ async function gradeCriterion(answer: File, criterionName: string, maxScore: num
     there is no problem when handwriting is unclear, just do your best to grade the answer
     Do not write "*", "**", or any other symbols in your response.
     feedback should be in bullet points(short sentences) or bolded sentences
-    the feedback should be just 100 words max
+    the feedback should be just 20 words max
+    the feedback should be in the following format:
+    - [feedback]
+    - [feedback]
+    - [feedback]
+    - [feedback]
+    - [feedback]
+    - [feedback]
 
     ESSAY:
     ${answer}
