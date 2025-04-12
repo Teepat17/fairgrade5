@@ -215,15 +215,22 @@ SUGGESTIONS:
     // Split the response into sections and format each section
     const sections = response.split(/(?=SCORE:|STRENGTHS:|WEAKNESSES:|ANALYSIS:|SUGGESTIONS:)/i);
     const formattedSections = sections.map(section => {
-      // Remove any leading/trailing whitespace
       section = section.trim();
-      
+    
+      // Insert a line break after each section header
+      section = section.replace(/^(SCORE:.*)/i, '\n$1\n');
+      section = section.replace(/^(STRENGTHS:)/i, '\n$1\n');
+      section = section.replace(/^(WEAKNESSES:)/i, '\n$1\n');
+      section = section.replace(/^(ANALYSIS:)/i, '\n$1\n');
+      section = section.replace(/^(SUGGESTIONS:)/i, '\n$1\n');
+    
       // Format bullet points
       section = section.replace(/[•\-]\s*/g, '• ');
       section = section.replace(/(•[^\n]+)/g, '$1\n');
-      
-      return section;
+    
+      return section.trim();
     });
+    
 
     // Join sections with double line breaks
     let formattedFeedback = formattedSections.join('\n\n').trim();
