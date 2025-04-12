@@ -73,7 +73,7 @@ async function callAIAPI(prompt: string): Promise<string> {
       }],
       generationConfig: {
         temperature: 0.7,
-        maxOutputTokens: 1000,
+        maxOutputTokens: 128,
         topP: 0.8,
         topK: 40
       }
@@ -126,7 +126,7 @@ async function callAIAPIWithFile(file: File, prompt: string): Promise<string> {
         }],
         generationConfig: {
           temperature: 0.3,
-          maxOutputTokens: 2048,
+          maxOutputTokens: 1024,
           topP: 0.8,
           topK: 40
         },
@@ -176,32 +176,26 @@ async function gradeCriterion(answer: File, criterionName: string, maxScore: num
   feedback: string;
 }> {
   try {
-    // Use the direct file upload method
-    const prompt = `You are an expert ${subject} grader. Please evaluate the following essay based on the criterion: ${criterionName}
+    const prompt = `You are an expert ${subject} grader. Evaluate this essay based on: ${criterionName}
 
-    there is no problem when handwriting is unclear, just do your best to grade the answer
-    feedback should be in bullet points(short sentences) or bolded sentences
-    the feedback should be as short as possible words max
-    the feedback should be in the following format:
-    - [feedback]
-    - [feedback]
-    - [feedback]
+Format your response EXACTLY as follows (do not add any extra text or explanations):
 
-    ESSAY:
-    ${answer}
+SCORE: [number between 0 and ${maxScore}]
 
-    Please provide a detailed evaluation in the following format:
-    SCORE: [number between 0 and ${maxScore}]
+STRENGTHS:
+• [key point]
+• [key point]
 
-    STRENGTHS:[List key strengths]
-    WEAKNESSES:[List key weaknesses]
-    DETAILED ANALYSIS:[Provide a comprehensive analysis of the ${subject} exam performance on this criterion]
-    SUGGESTIONS(as short as possible):
-    Long-term Development:[List broader development areas]
+WEAKNESSES:
+• [key point]
+• [key point]
 
-    Please ensure your response is clear, structured, and focused on the specific criterion being evaluated.
-    return a score between 0 and ${maxScore}
-    `;
+ANALYSIS:
+[2-3 sentences max]
+
+SUGGESTIONS:
+• [1-2 key improvements]
+• [1-2 key improvements]`;
     
     const response = await callAIAPIWithFile(answer, prompt);
     
@@ -218,40 +212,19 @@ async function gradeCriterion(answer: File, criterionName: string, maxScore: num
       throw new Error('AI response contained an invalid score');
     }
     
-    // Format the feedback with proper line breaks
-    let formattedFeedback = response;
-    
-    // Add line breaks after section headers
-    formattedFeedback = formattedFeedback
+    // Format the feedback with proper line breaks and bullet points
+    let formattedFeedback = response
+      // Ensure proper spacing after headers
       .replace(/SCORE:\s*(\d+)/i, 'SCORE: $1\n\n')
-      .replace(/STRENGTHS:/i, '\n\nSTRENGTHS:\n')
-      .replace(/WEAKNESSES:/i, '\n\nWEAKNESSES:\n')
-      .replace(/DETAILED ANALYSIS:/i, '\n\nDETAILED ANALYSIS:\n')
-      .replace(/SUGGESTIONS:/i, '\n\nSUGGESTIONS:\n')
-      .replace(/Long-term Development:/i, '\n\nLong-term Development:\n');
-    
-    // Add line breaks after bullet points
-    formattedFeedback = formattedFeedback.replace(/(\n|^)\s*-\s+/g, '\n- ');
-    
-    // Add line breaks after each bullet point
-    formattedFeedback = formattedFeedback.replace(/(-\s+[^\n]+)/g, '$1\n');
-    
-    // Add line breaks after sentences in detailed analysis
-    const detailedAnalysisMatch = formattedFeedback.match(/DETAILED ANALYSIS:\n([\s\S]*?)(?=\n\n|$)/i);
-    if (detailedAnalysisMatch) {
-      const detailedAnalysis = detailedAnalysisMatch[1];
-      const formattedAnalysis = detailedAnalysis
-        .replace(/([.!?])\s+/g, '$1\n')
-        .replace(/\n\s*\n/g, '\n');
-      
-      formattedFeedback = formattedFeedback.replace(
-        /DETAILED ANALYSIS:\n[\s\S]*?(?=\n\n|$)/i,
-        `DETAILED ANALYSIS:\n${formattedAnalysis}`
-      );
-    }
-    
-    // Clean up extra whitespace
-    formattedFeedback = formattedFeedback
+      .replace(/STRENGTHS:/i, '\nSTRENGTHS:\n')
+      .replace(/WEAKNESSES:/i, '\nWEAKNESSES:\n')
+      .replace(/ANALYSIS:/i, '\nANALYSIS:\n')
+      .replace(/SUGGESTIONS:/i, '\nSUGGESTIONS:\n')
+      // Standardize bullet points
+      .replace(/[•\-]\s*/g, '• ')
+      // Ensure proper spacing after bullet points
+      .replace(/(•\s*[^\n]+)/g, '$1\n')
+      // Clean up extra whitespace
       .replace(/\n{3,}/g, '\n\n')
       .trim();
     
@@ -261,7 +234,6 @@ async function gradeCriterion(answer: File, criterionName: string, maxScore: num
     };
   } catch (error: unknown) {
     console.error('AI grading error:', error);
-    // Return a more informative error message
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return {
       score: Math.floor(maxScore * 0.7),
