@@ -187,9 +187,6 @@ async function gradeCriterion(answer: File, criterionName: string, maxScore: num
     - [feedback]
     - [feedback]
     - [feedback]
-    - [feedback]
-    - [feedback]
-    - [feedback]
 
     ESSAY:
     ${answer}
@@ -223,16 +220,30 @@ async function gradeCriterion(answer: File, criterionName: string, maxScore: num
       throw new Error('AI response contained an invalid score');
     }
     
+    // Format the feedback with proper line breaks
+    const formattedFeedback = response
+      .replace(/SCORE:\s*(\d+)/i, 'SCORE: $1\n')
+      .replace(/STRENGTHS:/i, '\nSTRENGTHS:\n')
+      .replace(/WEAKNESSES:/i, '\nWEAKNESSES:\n')
+      .replace(/DETAILED ANALYSIS:/i, '\nDETAILED ANALYSIS:\n')
+      .replace(/SUGGESTIONS:/i, '\nSUGGESTIONS:\n')
+      .replace(/Immediate Improvements:/i, '\nImmediate Improvements:\n')
+      .replace(/Long-term Development:/i, '\nLong-term Development:\n')
+      .replace(/([.!?])\s+/g, '$1\n')
+      .replace(/\n\s*\n/g, '\n')
+      .trim();
+    
     return {
       score: score,
-      feedback: response,
+      feedback: formattedFeedback,
     };
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('AI grading error:', error);
     // Return a more informative error message
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return {
       score: Math.floor(maxScore * 0.7),
-      feedback: `Unable to perform AI grading: ${error.message}. Please review manually.`
+      feedback: `Unable to perform AI grading: ${errorMessage}. Please review manually.`
     };
   }
 }
