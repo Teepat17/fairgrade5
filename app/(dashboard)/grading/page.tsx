@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -16,14 +16,14 @@ import { RubricSelector } from "@/components/grading/rubric-selector"
 import { StudentPreview } from "@/components/grading/student-preview"
 import { saveGradingSession, fileToBase64 } from "@/lib/storage"
 import { initializeOCR, processStudentAnswers, processImage } from "@/lib/processing"
+import { useAuth } from "@/contexts/auth-context"
 
 export default function GradingPage() {
   const [activeTab, setActiveTab] = useState("upload")
   const [subject, setSubject] = useState<string | null>(null)
   const [sessionName, setSessionName] = useState("")
   const [studentFiles, setStudentFiles] = useState<File[]>([])
-  const [rubricFile, setRubricFile] = useState<File | null>(null)
-  const [useTemplateRubric, setUseTemplateRubric] = useState(false)
+  const [rubricText, setRubricText] = useState<string>("")
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showPreview, setShowPreview] = useState(false)
   const [gradingResults, setGradingResults] = useState<Array<{
@@ -38,29 +38,19 @@ export default function GradingPage() {
       feedback: string;
     }>;
   }> | null>(null)
-  const [rubricText, setRubricText] = useState<string>("")
 
   const router = useRouter()
   const { toast } = useToast()
+  const { user, loading } = useAuth()
+
+  useEffect(() => {
+    if (!loading && !user) {
+      router.push("/login")
+    }
+  }, [user, loading, router])
 
   const handleStudentFilesChange = (files: File[]) => {
     setStudentFiles(files)
-  }
-
-  const handleRubricFileChange = (files: File[]) => {
-    if (files.length > 0) {
-      setRubricFile(files[0])
-      setUseTemplateRubric(false)
-    } else {
-      setRubricFile(null)
-    }
-  }
-
-  const handleUseTemplateChange = (value: string) => {
-    setUseTemplateRubric(value === "template")
-    if (value === "template") {
-      setRubricFile(null)
-    }
   }
 
   const handleRubricChange = (newRubricText: string) => {
@@ -69,6 +59,16 @@ export default function GradingPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    if (!user) {
+      toast({
+        title: "Authentication required",
+        description: "Please log in to start grading",
+        variant: "destructive",
+      })
+      router.push("/login")
+      return
+    }
 
     if (!subject) {
       toast({
@@ -88,19 +88,11 @@ export default function GradingPage() {
       return
     }
 
-    if (!rubricFile && !useTemplateRubric) {
-      toast({
-        title: "Rubric required",
-        description: "Please either upload a rubric or use a template",
-        variant: "destructive",
-      })
-      return
-    }
-
     handleStartGrading()
   }
 
   const handleStartGrading = async () => {
+    if (!user) return
     setIsSubmitting(true)
 
     try {
@@ -108,7 +100,7 @@ export default function GradingPage() {
       await initializeOCR()
 
       // Get rubric text - now using the stored rubricText
-      const currentRubricText = rubricFile ? await processImage(rubricFile) : rubricText
+      const currentRubricText = rubricText
 
       if (!currentRubricText) {
         toast({
@@ -127,12 +119,11 @@ export default function GradingPage() {
       const sessionId = `session-${Date.now()}`
       const session = {
         id: sessionId,
+        userId: user.id,
         subject,
         sessionName,
         studentFiles: await Promise.all(studentFiles.map(file => fileToBase64(file))),
-        rubricFile: rubricFile ? await fileToBase64(rubricFile) : null,
         rubricText: currentRubricText,
-        useTemplateRubric,
         results,
         createdAt: new Date().toISOString(),
       }
@@ -159,17 +150,16 @@ export default function GradingPage() {
     }
   }
 
-  // Helper function to get template rubric
-  const getTemplateRubric = (subject: string) => {
-    const templates: Record<string, string> = {
-      english: `Thesis and argument development (30%)
-Evidence and supporting details (25%)
-Organization and structure (20%)
-Grammar and mechanics (15%)
-Style and voice (10%)`,
-      // Add more templates for other subjects
-    }
-    return templates[subject] || ""
+  if (loading) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+      </div>
+    )
+  }
+
+  if (!user) {
+    return null
   }
 
   const subjects = [
@@ -263,52 +253,15 @@ Style and voice (10%)`,
                 <Card>
                   <CardHeader>
                     <CardTitle>Grading Rubric</CardTitle>
-                    <CardDescription>Choose how you want to define the grading criteria</CardDescription>
+                    <CardDescription>Select a template rubric for grading</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <RadioGroup
-                      value={useTemplateRubric ? "template" : "upload"}
-                      onValueChange={handleUseTemplateChange}
-                    >
-                      <div className="flex items-start space-x-2">
-                        <RadioGroupItem value="upload" id="rubric-upload" />
-                        <div className="grid gap-1.5">
-                          <Label htmlFor="rubric-upload" className="font-medium">
-                            Upload your own rubric
-                          </Label>
-                          <p className="text-sm text-muted-foreground">
-                            Upload a file containing your custom grading rubric
-                          </p>
-                          {!useTemplateRubric && (
-                            <FileUploader
-                              accept=".jpg,.jpeg,.png,.pdf,.docx,.txt"
-                              multiple={false}
-                              onChange={handleRubricFileChange}
-                              maxFiles={1}
-                            />
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="mt-4 flex items-start space-x-2">
-                        <RadioGroupItem value="template" id="rubric-template" />
-                        <div className="grid gap-1.5">
-                          <Label htmlFor="rubric-template" className="font-medium">
-                            Use a template rubric
-                          </Label>
-                          <p className="text-sm text-muted-foreground">
-                            Select a pre-defined template for{" "}
-                            {subject ? subjects.find((s) => s.id === subject)?.name : "the selected subject"}
-                          </p>
-                          {useTemplateRubric && subject && (
-                            <RubricSelector 
-                              subject={subject} 
-                              onRubricChange={handleRubricChange}
-                            />
-                          )}
-                        </div>
-                      </div>
-                    </RadioGroup>
+                    {subject && (
+                      <RubricSelector 
+                        subject={subject} 
+                        onRubricChange={handleRubricChange}
+                      />
+                    )}
                   </CardContent>
                 </Card>
 
@@ -318,7 +271,7 @@ Style and voice (10%)`,
                   </Button>
                   <Button
                     type="submit"
-                    disabled={isSubmitting || (!rubricFile && !useTemplateRubric)}
+                    disabled={isSubmitting || !subject}
                     className="flex-1"
                   >
                     {isSubmitting ? "Processing..." : "Start Grading"}
@@ -352,7 +305,7 @@ Style and voice (10%)`,
                 <div>
                   <h3 className="text-sm font-medium text-muted-foreground">Rubric</h3>
                   <p className="font-medium">
-                    {rubricFile ? rubricFile.name : useTemplateRubric ? "Template rubric" : "Not selected"}
+                    {rubricText ? "Custom rubric" : "Template rubric"}
                   </p>
                 </div>
               </CardContent>
@@ -360,7 +313,7 @@ Style and voice (10%)`,
                 <Button
                   type="submit"
                   disabled={
-                    isSubmitting || !subject || studentFiles.length === 0 || (!rubricFile && !useTemplateRubric)
+                    isSubmitting || !subject || studentFiles.length === 0
                   }
                   className="w-full"
                 >

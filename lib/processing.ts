@@ -41,64 +41,14 @@ interface AIResponse {
   suggestions: string[];
 }
 
-// Function to grade a single criterion
-async function gradeCriterion(answer: string, criterionName: string, maxScore: number): Promise<{
-  score: number;
-  feedback: string;
-}> {
-  // Prepare the prompt for the AI
-  const prompt = `
-    You are an expert essay grader. Please evaluate the following essay based on the criterion: "${criterionName}".
-    
-    ESSAY:
-    ${answer}
-    
-    Please provide a detailed evaluation in the following format:
-    
-    SCORE: [number between 0 and ${maxScore}]
-    
-    STRENGTHS:
-    - [List key strengths]
-    
-    WEAKNESSES:
-    - [List key weaknesses]
-    
-    DETAILED ANALYSIS:
-    [Provide a comprehensive analysis of the essay's performance on this criterion]
-    
-    SUGGESTIONS:
-    Immediate Improvements:
-    - [List specific, actionable improvements]
-    
-    Long-term Development:
-    - [List broader development areas]
-    
-    Please ensure your response is clear, structured, and focused on the specific criterion being evaluated.
-  `;
-
-  try {
-    // Call the AI API
-    const response = await callAIAPI(prompt);
-    
-    // Parse the response to extract score and format feedback
-    const scoreMatch = response.match(/SCORE:\s*(\d+)/i);
-    const score = scoreMatch ? parseInt(scoreMatch[1], 10) : Math.floor(maxScore * 0.7);
-    
-    // Ensure score is within valid range
-    const validatedScore = Math.max(0, Math.min(maxScore, score));
-
-    return {
-      score: validatedScore,
-      feedback: response
-    };
-  } catch (error) {
-    console.error('AI grading error:', error);
-    // Fallback to basic grading if AI fails
-    return {
-      score: Math.floor(maxScore * 0.7), // Default to 70% if AI fails
-      feedback: 'Unable to perform AI grading. Please review manually.'
-    };
-  }
+// Function to convert File to base64
+async function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = error => reject(error);
+  });
 }
 
 // Function to call the AI API
@@ -142,6 +92,105 @@ async function callAIAPI(prompt: string): Promise<string> {
   return data.candidates[0].content.parts[0].text;
 }
 
+// Function to call the AI API with file
+async function callAIAPIWithFile(file: File, prompt: string): Promise<string> {
+  const API_KEY = process.env.NEXT_PUBLIC_AI_API_KEY;
+  const API_URL = process.env.NEXT_PUBLIC_AI_API_URL;
+
+  if (!API_KEY || !API_URL) {
+    throw new Error('AI API configuration missing. Please check your .env.local file.');
+  }
+
+  // Convert file to base64
+  const base64File = await fileToBase64(file);
+
+  const response = await fetch(`${API_URL}?key=${API_KEY}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      contents: [{
+        parts: [
+          {
+            text: prompt
+          },
+          {
+            inline_data: {
+              mime_type: file.type,
+              data: base64File.split(',')[1] // Remove the data URL prefix
+            }
+          }
+        ]
+      }],
+      generationConfig: {
+        temperature: 0.7,
+        maxOutputTokens: 100,
+        topP: 0.8,
+        topK: 40
+      }
+    })
+  });
+
+  if (!response.ok) {
+    throw new Error(`AI API request failed: ${response.statusText}`);
+  }
+
+  const data = await response.json();
+  if (!data.candidates?.[0]?.content?.parts?.[0]?.text) {
+    throw new Error('Invalid AI API response');
+  }
+
+  return data.candidates[0].content.parts[0].text;
+}
+
+// Modified gradeCriterion function to only handle files
+async function gradeCriterion(answer: File, criterionName: string, maxScore: number, subject: string): Promise<{
+  score: number;
+  feedback: string;
+}> {
+  try {
+    // Use the direct file upload method
+    const prompt = `You are an expert ${subject} grader. Please evaluate the following essay based on the criterion: ${criterionName}
+
+    there is no problem when handwriting is unclear, just do your best to grade the answer
+
+    ESSAY:
+    ${answer}
+
+    Please provide a detailed evaluation in the following format:
+    SCORE: [number between 0 and ${maxScore}]
+
+    STRENGTHS:[List key strengths]
+    WEAKNESSES:[List key weaknesses]
+    DETAILED ANALYSIS:[Provide a comprehensive analysis of the ${subject} exam performance on this criterion]
+    SUGGESTIONS:
+    Immediate Improvements:[List specific, actionable improvements]
+    Long-term Development:[List broader development areas]
+
+    Please ensure your response is clear, structured, and focused on the specific criterion being evaluated.
+    return a score between 0 and ${maxScore}
+    `;
+    const response = await callAIAPIWithFile(answer, prompt);
+    
+    // Parse the response to extract score
+    const scoreMatch = response.match(/SCORE:\s*(\d+)/i);
+    const score = scoreMatch ? parseInt(scoreMatch[1], 10) : Math.floor(maxScore * 0.7);
+    
+    // No need to scale the score since the LLM is already giving us a score in the correct range
+    return {
+      score: score,
+      feedback: response,
+    };
+  } catch (error) {
+    console.error('AI grading error:', error);
+    return {
+      score: Math.floor(maxScore * 0.7),
+      feedback: 'Unable to perform AI grading. Please review manually.'
+    };
+  }
+}
+
 export async function processStudentAnswers(
   studentFiles: File[],
   rubricText: string
@@ -161,10 +210,9 @@ export async function processStudentAnswers(
   const results = [];
   
   for (const file of studentFiles) {
-    const text = await processImage(file);
     const criteriaResults = await Promise.all(criteria.map(async criterion => {
       const maxScore = criterion.weight;
-      const { score, feedback } = await gradeCriterion(text, criterion.name, maxScore);
+      const { score, feedback } = await gradeCriterion(file, criterion.name, maxScore, "");
       return {
         name: criterion.name,
         score,

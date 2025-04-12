@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -8,69 +8,110 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Eye, Download, Trash2, Search } from "lucide-react"
+import { getAllGradingSessions, deleteGradingSession } from "@/lib/storage"
+import { useToast } from "@/components/ui/use-toast"
+import { useAuth } from "@/contexts/auth-context"
+import { useRouter } from "next/navigation"
 
-// Mock data for demonstration
-const mockHistoryData = [
-  {
-    id: "session-1234567890",
-    name: "Physics Midterm - Spring 2023",
-    subject: "Physics",
-    createdAt: "2023-04-15T10:30:00Z",
-    studentsCount: 25,
-    averageScore: 78.5,
-  },
-  {
-    id: "session-0987654321",
-    name: "Chemistry Final - Fall 2022",
-    subject: "Chemistry",
-    createdAt: "2022-12-10T14:15:00Z",
-    studentsCount: 32,
-    averageScore: 81.2,
-  },
-  {
-    id: "session-5678901234",
-    name: "Biology Quiz 3 - Spring 2023",
-    subject: "Biology",
-    createdAt: "2023-03-22T09:45:00Z",
-    studentsCount: 18,
-    averageScore: 85.7,
-  },
-  {
-    id: "session-4321098765",
-    name: "Math Homework 5 - Spring 2023",
-    subject: "Math",
-    createdAt: "2023-02-28T16:20:00Z",
-    studentsCount: 28,
-    averageScore: 72.3,
-  },
-  {
-    id: "session-9876543210",
-    name: "English Essay Analysis - Spring 2023",
-    subject: "English",
-    createdAt: "2023-05-05T13:15:00Z",
-    studentsCount: 22,
-    averageScore: 83.6,
-  },
-  {
-    id: "session-5432109876",
-    name: "Social Studies Document Analysis - Spring 2023",
-    subject: "Social",
-    createdAt: "2023-05-18T10:45:00Z",
-    studentsCount: 24,
-    averageScore: 79.8,
-  },
-]
+interface GradingSession {
+  id: string
+  userId: string
+  subject: string
+  sessionName: string
+  studentFiles: string[]
+  results: Array<{
+    id: string
+    name: string
+    score: number
+    feedback: string
+    criteria: Array<{
+      name: string
+      score: number
+      maxScore: number
+      feedback: string
+    }>
+  }>
+  createdAt: string
+}
 
 export default function HistoryPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [subjectFilter, setSubjectFilter] = useState("all")
+  const [sessions, setSessions] = useState<GradingSession[]>([])
+  const { toast } = useToast()
+  const { user, loading } = useAuth()
+  const router = useRouter()
 
-  // Filter history data based on search term and subject filter
-  const filteredHistory = mockHistoryData.filter((session) => {
-    const matchesSearch = session.name.toLowerCase().includes(searchTerm.toLowerCase())
+  useEffect(() => {
+    if (!loading && !user) {
+      router.push("/login")
+      return
+    }
+    if (user) {
+      loadSessions()
+    }
+  }, [user, loading])
+
+  const loadSessions = async () => {
+    if (!user) return
+    
+    try {
+      const allSessions = await getAllGradingSessions(user.id)
+      setSessions(allSessions)
+    } catch (error) {
+      console.error("Error loading sessions:", error)
+      toast({
+        title: "Error",
+        description: "Failed to load grading sessions",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const handleDelete = async (id: string) => {
+    if (!user) return
+
+    try {
+      await deleteGradingSession(id, user.id)
+      toast({
+        title: "Success",
+        description: "Grading session deleted successfully",
+      })
+      loadSessions() // Reload the sessions
+    } catch (error) {
+      console.error("Error deleting session:", error)
+      toast({
+        title: "Error",
+        description: "Failed to delete grading session",
+        variant: "destructive",
+      })
+    }
+  }
+
+  // Filter sessions based on search term and subject filter
+  const filteredSessions = sessions.filter((session) => {
+    const matchesSearch = session.sessionName.toLowerCase().includes(searchTerm.toLowerCase())
     const matchesSubject = subjectFilter === "all" || session.subject.toLowerCase() === subjectFilter.toLowerCase()
     return matchesSearch && matchesSubject
   })
+
+  const calculateAverageScore = (session: GradingSession) => {
+    if (!session.results || session.results.length === 0) return 0
+    const totalScore = session.results.reduce((sum, result) => sum + result.score, 0)
+    return totalScore / session.results.length
+  }
+
+  if (loading) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+      </div>
+    )
+  }
+
+  if (!user) {
+    return null
+  }
 
   return (
     <div className="container mx-auto p-6">
@@ -115,7 +156,7 @@ export default function HistoryPage() {
           </div>
         </CardHeader>
         <CardContent>
-          {filteredHistory.length > 0 ? (
+          {filteredSessions.length > 0 ? (
             <Table>
               <TableHeader>
                 <TableRow>
@@ -128,13 +169,13 @@ export default function HistoryPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredHistory.map((session) => (
+                {filteredSessions.map((session) => (
                   <TableRow key={session.id}>
-                    <TableCell className="font-medium">{session.name}</TableCell>
+                    <TableCell className="font-medium">{session.sessionName}</TableCell>
                     <TableCell>{session.subject}</TableCell>
                     <TableCell>{new Date(session.createdAt).toLocaleDateString()}</TableCell>
-                    <TableCell className="text-right">{session.studentsCount}</TableCell>
-                    <TableCell className="text-right">{session.averageScore.toFixed(1)}%</TableCell>
+                    <TableCell className="text-right">{session.results?.length || 0}</TableCell>
+                    <TableCell className="text-right">{calculateAverageScore(session).toFixed(1)}%</TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end space-x-1">
                         <Button variant="ghost" size="icon" asChild>
@@ -147,7 +188,7 @@ export default function HistoryPage() {
                           <Download className="h-4 w-4" />
                           <span className="sr-only">Download</span>
                         </Button>
-                        <Button variant="ghost" size="icon">
+                        <Button variant="ghost" size="icon" onClick={() => handleDelete(session.id)}>
                           <Trash2 className="h-4 w-4" />
                           <span className="sr-only">Delete</span>
                         </Button>
@@ -164,22 +205,27 @@ export default function HistoryPage() {
               </div>
               <h3 className="mt-4 text-lg font-medium">No sessions found</h3>
               <p className="mt-2 text-center text-sm text-muted-foreground">
-                No grading sessions match your search criteria.
-                {searchTerm || subjectFilter !== "all" ? (
-                  <Button
-                    variant="link"
-                    className="h-auto p-0"
-                    onClick={() => {
-                      setSearchTerm("")
-                      setSubjectFilter("all")
-                    }}
-                  >
-                    Clear filters
-                  </Button>
+                {sessions.length === 0 ? (
+                  <>
+                    You haven't created any grading sessions yet.{" "}
+                    <Link href="/grading" className="text-primary hover:underline">
+                      Start a new grading session
+                    </Link>
+                  </>
                 ) : (
-                  <Link href="/grading" className="text-primary hover:underline">
-                    Start a new grading session
-                  </Link>
+                  <>
+                    No grading sessions match your search criteria.{" "}
+                    <Button
+                      variant="link"
+                      className="h-auto p-0"
+                      onClick={() => {
+                        setSearchTerm("")
+                        setSubjectFilter("all")
+                      }}
+                    >
+                      Clear filters
+                    </Button>
+                  </>
                 )}
               </p>
             </div>

@@ -80,7 +80,6 @@ export default function RubricsPage() {
   const [newRubricName, setNewRubricName] = useState("")
   const [newRubricSubject, setNewRubricSubject] = useState("")
   const [newRubricContent, setNewRubricContent] = useState("")
-  const [rubricFile, setRubricFile] = useState<File | null>(null)
   const [activeTab, setActiveTab] = useState("create")
 
   const { toast } = useToast()
@@ -175,45 +174,6 @@ export default function RubricsPage() {
     })
   }
 
-  const handleRubricFileChange = (files: File[]) => {
-    if (files.length > 0) {
-      setRubricFile(files[0])
-    } else {
-      setRubricFile(null)
-    }
-  }
-
-  const handleUploadRubric = () => {
-    if (!rubricFile) {
-      toast({
-        title: "No file selected",
-        description: "Please select a file to upload",
-        variant: "destructive",
-      })
-      return
-    }
-
-    // In a real application, you would parse the file here
-    // For this demo, we'll just create a placeholder rubric
-
-    const newRubric = {
-      id: `rubric-${Date.now()}`,
-      name: rubricFile.name.replace(/\.[^/.]+$/, ""),
-      subject: "Other",
-      createdAt: new Date().toISOString(),
-      content: "Uploaded rubric content would be parsed here.",
-    }
-
-    setRubrics([...rubrics, newRubric])
-    setRubricFile(null)
-    setActiveTab("create")
-
-    toast({
-      title: "Rubric uploaded",
-      description: "Your rubric has been uploaded successfully",
-    })
-  }
-
   const openEditDialog = (rubric: any) => {
     setCurrentRubric(rubric)
     setNewRubricName(rubric.name)
@@ -286,9 +246,8 @@ export default function RubricsPage() {
           </DialogHeader>
 
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid w-full grid-cols-2">
+            <TabsList className="grid w-full grid-cols-1">
               <TabsTrigger value="create">Create Manually</TabsTrigger>
-              <TabsTrigger value="upload">Upload File</TabsTrigger>
             </TabsList>
 
             <TabsContent value="create" className="space-y-4 pt-4">
@@ -333,21 +292,6 @@ export default function RubricsPage() {
                 </p>
               </div>
             </TabsContent>
-
-            <TabsContent value="upload" className="space-y-4 pt-4">
-              <div className="space-y-2">
-                <Label>Upload Rubric File</Label>
-                <FileUploader
-                  accept=".pdf,.docx,.txt"
-                  multiple={false}
-                  onChange={handleRubricFileChange}
-                  maxFiles={1}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Upload a PDF, Word document, or text file containing your rubric.
-                </p>
-              </div>
-            </TabsContent>
           </Tabs>
 
           <DialogFooter>
@@ -355,8 +299,8 @@ export default function RubricsPage() {
               Cancel
             </Button>
             <Button
-              onClick={activeTab === "create" ? handleCreateRubric : handleUploadRubric}
-              disabled={activeTab === "create" ? !newRubricName || !newRubricSubject || !newRubricContent : !rubricFile}
+              onClick={handleCreateRubric}
+              disabled={!newRubricName || !newRubricSubject || !newRubricContent}
             >
               Create Rubric
             </Button>
