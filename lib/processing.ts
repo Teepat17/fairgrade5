@@ -211,30 +211,29 @@ SUGGESTIONS:
       console.error('Invalid score in AI response:', score);
       throw new Error('AI response contained an invalid score');
     }
+
+    // Split the response into sections and format each section
+    const sections = response.split(/(?=SCORE:|STRENGTHS:|WEAKNESSES:|ANALYSIS:|SUGGESTIONS:)/i);
+    const formattedSections = sections.map(section => {
+      // Remove any leading/trailing whitespace
+      section = section.trim();
+      
+      // Format bullet points
+      section = section.replace(/[•\-]\s*/g, '• ');
+      section = section.replace(/(•[^\n]+)/g, '$1\n');
+      
+      return section;
+    });
+
+    // Join sections with double line breaks
+    let formattedFeedback = formattedSections.join('\n\n').trim();
     
-    // Format the feedback with proper line breaks and bullet points
-    let formattedFeedback = response
-      // Extract each section
-      .replace(/SCORE:\s*(\d+)/i, 'SCORE: $1\n\n')
-      .replace(/STRENGTHS:/i, '\n\nSTRENGTHS:\n')
-      .replace(/WEAKNESSES:/i, '\n\nWEAKNESSES:\n')
-      .replace(/ANALYSIS:/i, '\n\nANALYSIS:\n')
-      .replace(/SUGGESTIONS:/i, '\n\nSUGGESTIONS:\n')
-      // Standardize bullet points and ensure proper spacing
-      .replace(/[•\-]\s*/g, '• ')
-      .replace(/(•\s*[^\n]+)/g, '$1\n')
-      // Clean up extra whitespace while preserving section breaks
-      .replace(/\n{3,}/g, '\n\n')
-      .trim();
-    
-    // Ensure there's a double line break between sections
+    // Clean up any excessive line breaks
     formattedFeedback = formattedFeedback
-      .replace(/SCORE: (\d+)/, 'SCORE: $1\n\n')
-      .replace(/STRENGTHS:/, '\n\nSTRENGTHS:')
-      .replace(/WEAKNESSES:/, '\n\nWEAKNESSES:')
-      .replace(/ANALYSIS:/, '\n\nANALYSIS:')
-      .replace(/SUGGESTIONS:/, '\n\nSUGGESTIONS:');
-    
+      .replace(/\n{3,}/g, '\n\n')
+      .replace(/\n\s+\n/g, '\n\n')
+      .trim();
+
     return {
       score: score,
       feedback: formattedFeedback,
