@@ -180,8 +180,10 @@ async function gradeCriterion(answer: File, criterionName: string, maxScore: num
     const prompt = `You are an expert ${subject} grader. Please evaluate the following essay based on the criterion: ${criterionName}
 
     there is no problem when handwriting is unclear, just do your best to grade the answer
+    Do not write "*", "**", or any other symbols in your response.
+    feedback should be in bullet points(short sentences)
 
-    ESSAY:
+    ANSWER:
     ${answer}
 
     Please provide a detailed evaluation in the following format:
