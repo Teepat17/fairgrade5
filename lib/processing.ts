@@ -218,11 +218,11 @@ SUGGESTIONS:
       section = section.trim();
     
       // Insert a line break after each section header
-      section = section.replace(/^(SCORE:.*)/i, '\n$1\n');
-      section = section.replace(/^(STRENGTHS:)/i, '\n$1\n');
-      section = section.replace(/^(WEAKNESSES:)/i, '\n$1\n');
-      section = section.replace(/^(ANALYSIS:)/i, '\n$1\n');
-      section = section.replace(/^(SUGGESTIONS:)/i, '\n$1\n');
+      var section = section.replace(/^(SCORE:.*)/i, '\n$1\n');
+      var section = section.replace(/^(STRENGTHS:)/i, '\n$1\n');
+      var section = section.replace(/^(WEAKNESSES:)/i, '\n$1\n');
+      var section = section.replace(/^(ANALYSIS:)/i, '\n$1\n');
+      var section = section.replace(/^(SUGGESTIONS:)/i, '\n$1\n');
     
       // Format bullet points
       section = section.replace(/[•\-]\s*/g, '• ');
