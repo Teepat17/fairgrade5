@@ -180,9 +180,8 @@ async function gradeCriterion(answer: File, criterionName: string, maxScore: num
     const prompt = `You are an expert ${subject} grader. Please evaluate the following essay based on the criterion: ${criterionName}
 
     there is no problem when handwriting is unclear, just do your best to grade the answer
-    Do not write "*", "**", or any other symbols in your response.
     feedback should be in bullet points(short sentences) or bolded sentences
-    the feedback should be just 20 words max
+    the feedback should be as short as possible words max
     the feedback should be in the following format:
     - [feedback]
     - [feedback]
@@ -197,8 +196,7 @@ async function gradeCriterion(answer: File, criterionName: string, maxScore: num
     STRENGTHS:[List key strengths]
     WEAKNESSES:[List key weaknesses]
     DETAILED ANALYSIS:[Provide a comprehensive analysis of the ${subject} exam performance on this criterion]
-    SUGGESTIONS:
-    Immediate Improvements:[List specific, actionable improvements]
+    SUGGESTIONS(as short as possible):
     Long-term Development:[List broader development areas]
 
     Please ensure your response is clear, structured, and focused on the specific criterion being evaluated.
@@ -221,16 +219,40 @@ async function gradeCriterion(answer: File, criterionName: string, maxScore: num
     }
     
     // Format the feedback with proper line breaks
-    const formattedFeedback = response
-      .replace(/SCORE:\s*(\d+)/i, 'SCORE: $1\n')
-      .replace(/STRENGTHS:/i, '\nSTRENGTHS:\n')
-      .replace(/WEAKNESSES:/i, '\nWEAKNESSES:\n')
-      .replace(/DETAILED ANALYSIS:/i, '\nDETAILED ANALYSIS:\n')
-      .replace(/SUGGESTIONS:/i, '\nSUGGESTIONS:\n')
-      .replace(/Immediate Improvements:/i, '\nImmediate Improvements:\n')
-      .replace(/Long-term Development:/i, '\nLong-term Development:\n')
-      .replace(/([.!?])\s+/g, '$1\n')
-      .replace(/\n\s*\n/g, '\n')
+    let formattedFeedback = response;
+    
+    // Add line breaks after section headers
+    formattedFeedback = formattedFeedback
+      .replace(/SCORE:\s*(\d+)/i, 'SCORE: $1\n\n')
+      .replace(/STRENGTHS:/i, '\n\nSTRENGTHS:\n')
+      .replace(/WEAKNESSES:/i, '\n\nWEAKNESSES:\n')
+      .replace(/DETAILED ANALYSIS:/i, '\n\nDETAILED ANALYSIS:\n')
+      .replace(/SUGGESTIONS:/i, '\n\nSUGGESTIONS:\n')
+      .replace(/Long-term Development:/i, '\n\nLong-term Development:\n');
+    
+    // Add line breaks after bullet points
+    formattedFeedback = formattedFeedback.replace(/(\n|^)\s*-\s+/g, '\n- ');
+    
+    // Add line breaks after each bullet point
+    formattedFeedback = formattedFeedback.replace(/(-\s+[^\n]+)/g, '$1\n');
+    
+    // Add line breaks after sentences in detailed analysis
+    const detailedAnalysisMatch = formattedFeedback.match(/DETAILED ANALYSIS:\n([\s\S]*?)(?=\n\n|$)/i);
+    if (detailedAnalysisMatch) {
+      const detailedAnalysis = detailedAnalysisMatch[1];
+      const formattedAnalysis = detailedAnalysis
+        .replace(/([.!?])\s+/g, '$1\n')
+        .replace(/\n\s*\n/g, '\n');
+      
+      formattedFeedback = formattedFeedback.replace(
+        /DETAILED ANALYSIS:\n[\s\S]*?(?=\n\n|$)/i,
+        `DETAILED ANALYSIS:\n${formattedAnalysis}`
+      );
+    }
+    
+    // Clean up extra whitespace
+    formattedFeedback = formattedFeedback
+      .replace(/\n{3,}/g, '\n\n')
       .trim();
     
     return {
