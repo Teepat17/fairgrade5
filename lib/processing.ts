@@ -180,85 +180,49 @@ async function gradeCriterion(answer: File, criterionName: string, maxScore: num
     const prompt = `You are an expert ${subject} grader. Please evaluate the following essay based on the criterion: ${criterionName}
 
     there is no problem when handwriting is unclear, just do your best to grade the answer
+    Do not write "*", "**", or any other symbols in your response.
+    feedback should be in bullet points(short sentences) or bolded sentences
+    the feedback should be just 100 words max
 
     ESSAY:
     ${answer}
 
-    Please provide a detailed evaluation in the following JSON format:
-    {
-      "score": [number between 0 and ${maxScore}],
-      "strengths": [
-        "List of key strengths",
-        "Each strength on a new line"
-      ],
-      "weaknesses": [
-        "List of key weaknesses",
-        "Each weakness on a new line"
-      ],
-      "analysis": "Comprehensive analysis of the ${subject} exam performance on this criterion",
-      "suggestions": {
-        "immediate": [
-          "List of specific, actionable improvements",
-          "Each suggestion on a new line"
-        ],
-        "longTerm": [
-          "List of broader development areas",
-          "Each area on a new line"
-        ]
-      }
-    }
+    Please provide a detailed evaluation in the following format:
+    SCORE: [number between 0 and ${maxScore}]
 
-    Please ensure your response is a valid JSON object with all the fields above.
+    STRENGTHS:[List key strengths]
+    WEAKNESSES:[List key weaknesses]
+    DETAILED ANALYSIS:[Provide a comprehensive analysis of the ${subject} exam performance on this criterion]
+    SUGGESTIONS:
+    Immediate Improvements:[List specific, actionable improvements]
+    Long-term Development:[List broader development areas]
+
+    Please ensure your response is clear, structured, and focused on the specific criterion being evaluated.
+    return a score between 0 and ${maxScore}
     `;
     
     const response = await callAIAPIWithFile(answer, prompt);
     
-    // Parse the JSON response
-    let parsedResponse;
-    try {
-      parsedResponse = JSON.parse(response);
-    } catch (error) {
-      console.error('Failed to parse AI response as JSON:', error);
-      throw new Error('AI response was not in valid JSON format');
+    // Parse the response to extract score
+    const scoreMatch = response.match(/SCORE:\s*(\d+)/i);
+    if (!scoreMatch) {
+      console.error('Could not find score in AI response:', response);
+      throw new Error('AI response did not contain a valid score');
     }
     
-    // Validate the response structure
-    if (!parsedResponse.score || !Array.isArray(parsedResponse.strengths) || !Array.isArray(parsedResponse.weaknesses)) {
-      throw new Error('AI response missing required fields');
-    }
-    
-    const score = parsedResponse.score;
+    const score = parseInt(scoreMatch[1], 10);
     if (isNaN(score) || score < 0 || score > maxScore) {
+      console.error('Invalid score in AI response:', score);
       throw new Error('AI response contained an invalid score');
     }
     
-    // Format the feedback as a structured string
-    const formattedFeedback = `
-Score: ${score}/${maxScore}
-
-STRENGTHS:
-${parsedResponse.strengths.map((s: string) => `- ${s}`).join('\n')}
-
-WEAKNESSES:
-${parsedResponse.weaknesses.map((w: string) => `- ${w}`).join('\n')}
-
-ANALYSIS:
-${parsedResponse.analysis}
-
-SUGGESTIONS:
-Immediate Improvements:
-${parsedResponse.suggestions.immediate.map((s: string) => `- ${s}`).join('\n')}
-
-Long-term Development:
-${parsedResponse.suggestions.longTerm.map((s: string) => `- ${s}`).join('\n')}
-    `.trim();
-    
     return {
       score: score,
-      feedback: formattedFeedback,
+      feedback: response,
     };
-  } catch (error: any) {
+  } catch (error) {
     console.error('AI grading error:', error);
+    // Return a more informative error message
     return {
       score: Math.floor(maxScore * 0.7),
       feedback: `Unable to perform AI grading: ${error.message}. Please review manually.`
