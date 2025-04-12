@@ -104,44 +104,70 @@ async function callAIAPIWithFile(file: File, prompt: string): Promise<string> {
   // Convert file to base64
   const base64File = await fileToBase64(file);
 
-  const response = await fetch(`${API_URL}?key=${API_KEY}`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      contents: [{
-        parts: [
+  try {
+    const response = await fetch(`${API_URL}?key=${API_KEY}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        contents: [{
+          parts: [
+            {
+              text: prompt
+            },
+            {
+              inline_data: {
+                mime_type: file.type,
+                data: base64File.split(',')[1] // Remove the data URL prefix
+              }
+            }
+          ]
+        }],
+        generationConfig: {
+          temperature: 0.3,
+          maxOutputTokens: 2048,
+          topP: 0.8,
+          topK: 40
+        },
+        safetySettings: [
           {
-            text: prompt
+            category: "HARM_CATEGORY_HARASSMENT",
+            threshold: "BLOCK_MEDIUM_AND_ABOVE"
           },
           {
-            inline_data: {
-              mime_type: file.type,
-              data: base64File.split(',')[1] // Remove the data URL prefix
-            }
+            category: "HARM_CATEGORY_HATE_SPEECH",
+            threshold: "BLOCK_MEDIUM_AND_ABOVE"
+          },
+          {
+            category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+            threshold: "BLOCK_MEDIUM_AND_ABOVE"
+          },
+          {
+            category: "HARM_CATEGORY_DANGEROUS_CONTENT",
+            threshold: "BLOCK_MEDIUM_AND_ABOVE"
           }
         ]
-      }],
-      generationConfig: {
-        temperature: 0.7,
-        maxOutputTokens: 100,
-        topP: 0.8,
-        topK: 40
-      }
-    })
-  });
+      })
+    });
 
-  if (!response.ok) {
-    throw new Error(`AI API request failed: ${response.statusText}`);
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error('AI API error:', errorData);
+      throw new Error(`AI API request failed: ${response.statusText} - ${JSON.stringify(errorData)}`);
+    }
+
+    const data = await response.json();
+    if (!data.candidates?.[0]?.content?.parts?.[0]?.text) {
+      console.error('Invalid AI API response:', data);
+      throw new Error('Invalid AI API response format');
+    }
+
+    return data.candidates[0].content.parts[0].text;
+  } catch (error) {
+    console.error('AI API call error:', error);
+    throw error;
   }
-
-  const data = await response.json();
-  if (!data.candidates?.[0]?.content?.parts?.[0]?.text) {
-    throw new Error('Invalid AI API response');
-  }
-
-  return data.candidates[0].content.parts[0].text;
 }
 
 // Modified gradeCriterion function to only handle files
@@ -171,22 +197,32 @@ async function gradeCriterion(answer: File, criterionName: string, maxScore: num
     Please ensure your response is clear, structured, and focused on the specific criterion being evaluated.
     return a score between 0 and ${maxScore}
     `;
+    
     const response = await callAIAPIWithFile(answer, prompt);
     
     // Parse the response to extract score
     const scoreMatch = response.match(/SCORE:\s*(\d+)/i);
-    const score = scoreMatch ? parseInt(scoreMatch[1], 10) : Math.floor(maxScore * 0.7);
+    if (!scoreMatch) {
+      console.error('Could not find score in AI response:', response);
+      throw new Error('AI response did not contain a valid score');
+    }
     
-    // No need to scale the score since the LLM is already giving us a score in the correct range
+    const score = parseInt(scoreMatch[1], 10);
+    if (isNaN(score) || score < 0 || score > maxScore) {
+      console.error('Invalid score in AI response:', score);
+      throw new Error('AI response contained an invalid score');
+    }
+    
     return {
       score: score,
       feedback: response,
     };
   } catch (error) {
     console.error('AI grading error:', error);
+    // Return a more informative error message
     return {
       score: Math.floor(maxScore * 0.7),
-      feedback: 'Unable to perform AI grading. Please review manually.'
+      feedback: `Unable to perform AI grading: ${error.message}. Please review manually.`
     };
   }
 }
