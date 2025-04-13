@@ -2,7 +2,7 @@
 
 import { usePathname } from "next/navigation"
 import Link from "next/link"
-import { Home, FileText, History, Settings, LogOut, User, BookOpen } from "lucide-react"
+import { Home, FileText, History, Settings, LogOut, User, BookOpen, ClipboardCheck } from "lucide-react"
 import { useAuth } from "@/contexts/auth-context"
 import {
   Sidebar,
@@ -50,6 +50,12 @@ export function DashboardSidebar() {
       href: "/grading",
       icon: FileText,
       current: pathname === "/grading",
+    },
+    {
+      name: "Push & Check",
+      href: "/push-and-check",
+      icon: ClipboardCheck,
+      current: pathname === "/push-and-check",
     },
     {
       name: "History",

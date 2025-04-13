@@ -130,7 +130,7 @@ async function callAIAPI(prompt: string): Promise<string> {
 }
 
 // Function to call the AI API with file
-async function callAIAPIWithFile(file: File, prompt: string): Promise<string> {
+export async function callAIAPIWithFile(file: File, prompt: string): Promise<string> {
   const API_KEY = process.env.NEXT_PUBLIC_AI_API_KEY;
   const API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
 
