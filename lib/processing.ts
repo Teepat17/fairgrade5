@@ -51,6 +51,43 @@ async function fileToBase64(file: File): Promise<string> {
   });
 }
 
+// Function to delay execution
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+// Function to retry with exponential backoff
+async function retryWithBackoff<T>(
+  fn: () => Promise<T>,
+  maxRetries: number = 3,
+  initialDelay: number = 1000
+): Promise<T> {
+  let retries = 0;
+  let currentDelay = initialDelay;
+  
+  while (true) {
+    try {
+      return await fn();
+    } catch (error) {
+      retries++;
+      
+      // Check if it's a rate limit error
+      const isRateLimitError = error instanceof Error && 
+        (error.message.includes('429') || 
+         error.message.includes('RESOURCE_EXHAUSTED') || 
+         error.message.includes('quota'));
+      
+      if (isRateLimitError && retries <= maxRetries) {
+        console.log(`Rate limit hit, retrying in ${currentDelay}ms (attempt ${retries}/${maxRetries})`);
+        await delay(currentDelay);
+        currentDelay *= 2; // Exponential backoff
+        continue;
+      }
+      
+      // If it's not a rate limit error or we've exhausted retries, rethrow
+      throw error;
+    }
+  }
+}
+
 // Function to call the AI API
 async function callAIAPI(prompt: string): Promise<string> {
   const API_KEY = process.env.NEXT_PUBLIC_AI_API_KEY;
@@ -104,7 +141,7 @@ async function callAIAPIWithFile(file: File, prompt: string): Promise<string> {
   // Convert file to base64
   const base64File = await fileToBase64(file);
 
-  try {
+  return retryWithBackoff(async () => {
     const response = await fetch(`${API_URL}?key=${API_KEY}`, {
       method: 'POST',
       headers: {
@@ -164,10 +201,7 @@ async function callAIAPIWithFile(file: File, prompt: string): Promise<string> {
     }
 
     return data.candidates[0].content.parts[0].text;
-  } catch (error) {
-    console.error('AI API call error:', error);
-    throw error;
-  }
+  });
 }
 
 // Modified gradeCriterion function to only handle files
@@ -273,17 +307,23 @@ export async function processStudentAnswers(
   const criteria = parseRubric(rubricText);
   const results = [];
   
+  // Process files sequentially instead of in parallel
   for (const file of studentFiles) {
-    const criteriaResults = await Promise.all(criteria.map(async criterion => {
+    // Process criteria sequentially for each file
+    const criteriaResults = [];
+    for (const criterion of criteria) {
       const maxScore = criterion.weight;
       const { score, feedback } = await gradeCriterion(file, criterion.name, maxScore, "");
-      return {
+      criteriaResults.push({
         name: criterion.name,
         score,
         maxScore,
         feedback
-      };
-    }));
+      });
+      
+      // Add a small delay between criteria to avoid rate limiting
+      await delay(500);
+    }
     
     const totalScore = Math.round(
       criteriaResults.reduce((sum, criterion) => sum + criterion.score, 0) /
@@ -302,6 +342,9 @@ export async function processStudentAnswers(
       feedback: overallFeedback,
       criteria: criteriaResults
     });
+    
+    // Add a delay between files to avoid rate limiting
+    await delay(1000);
   }
   
   return results;
