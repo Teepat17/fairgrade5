@@ -120,8 +120,8 @@ export function StudentPreview({ files, isOpen, onClose, gradingResults, showRes
                   <CardContent>
                     <Progress 
                       value={currentResult.score} 
-                      className="h-2" 
-                      indicatorClassName={getProgressColor(currentResult.score)} 
+                      className="h-2"
+                      indicatorClassName={getProgressColor(currentResult.score)}
                     />
                     <Badge className={`mt-4 ${getFeedbackBadge(currentResult.score).class}`}>
                       {getFeedbackBadge(currentResult.score).text}
@@ -159,8 +159,8 @@ export function StudentPreview({ files, isOpen, onClose, gradingResults, showRes
                           </div>
                           <Progress 
                             value={percentage} 
-                            className="h-1" 
-                            indicatorClassName={getProgressColor(percentage)} 
+                            className="h-1"
+                            indicatorClassName={getProgressColor(percentage)}
                           />
                           <div className="bg-muted/50 rounded-md p-3 mt-2 whitespace-pre-wrap">
                             {criterion.feedback}
@@ -261,9 +261,9 @@ export function StudentPreview({ files, isOpen, onClose, gradingResults, showRes
                                   <li key={i} className="flex items-start">
                                     <span className="mr-2">•</span>
                                     <span>{point}</span>
-                                  </li>
-                                ))}
-                              </ul>
+                          </li>
+                        ))}
+                    </ul>
                             </div>
                           );
                         })}

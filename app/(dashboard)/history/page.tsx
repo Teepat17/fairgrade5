@@ -7,11 +7,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Eye, Download, Trash2, Search } from "lucide-react"
+import { Eye, Download, Trash2, Search, FileText } from "lucide-react"
 import { getAllGradingSessions, deleteGradingSession } from "@/lib/storage"
 import { useToast } from "@/components/ui/use-toast"
 import { useAuth } from "@/contexts/auth-context"
 import { useRouter } from "next/navigation"
+import { StudentPreview } from "@/components/grading/student-preview"
 
 interface GradingSession {
   id: string
@@ -38,6 +39,9 @@ export default function HistoryPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [subjectFilter, setSubjectFilter] = useState("all")
   const [sessions, setSessions] = useState<GradingSession[]>([])
+  const [previewSession, setPreviewSession] = useState<GradingSession | null>(null)
+  const [previewFiles, setPreviewFiles] = useState<File[]>([])
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false)
   const { toast } = useToast()
   const { user, loading } = useAuth()
   const router = useRouter()
@@ -87,6 +91,45 @@ export default function HistoryPage() {
       })
     }
   }
+
+  const handlePreview = async (session: GradingSession) => {
+    try {
+      // Convert base64 strings to File objects
+      const files = await Promise.all(
+        session.studentFiles.map(async (base64, index) => {
+          // Extract the file extension from the base64 string or use a default
+          const fileExtension = base64.includes('data:image/jpeg') ? 'jpg' : 
+                               base64.includes('data:image/png') ? 'png' : 'pdf';
+          
+          // Create a blob from the base64 string
+          const byteString = atob(base64.split(',')[1]);
+          const mimeString = base64.split(',')[0].split(':')[1].split(';')[0];
+          const ab = new ArrayBuffer(byteString.length);
+          const ia = new Uint8Array(ab);
+          
+          for (let i = 0; i < byteString.length; i++) {
+            ia[i] = byteString.charCodeAt(i);
+          }
+          
+          const blob = new Blob([ab], { type: mimeString });
+          
+          // Create a File object
+          return new File([blob], `student_answer_${index + 1}.${fileExtension}`, { type: mimeString });
+        })
+      );
+      
+      setPreviewFiles(files);
+      setPreviewSession(session);
+      setIsPreviewOpen(true);
+    } catch (error) {
+      console.error("Error preparing preview:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load preview",
+        variant: "destructive",
+      });
+    }
+  };
 
   // Filter sessions based on search term and subject filter
   const filteredSessions = sessions.filter((session) => {
@@ -184,6 +227,14 @@ export default function HistoryPage() {
                             <span className="sr-only">View</span>
                           </Link>
                         </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          onClick={() => handlePreview(session)}
+                        >
+                          <FileText className="h-4 w-4" />
+                          <span className="sr-only">Preview</span>
+                        </Button>
                         <Button variant="ghost" size="icon">
                           <Download className="h-4 w-4" />
                           <span className="sr-only">Download</span>
@@ -232,6 +283,17 @@ export default function HistoryPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Student Preview Dialog */}
+      {previewSession && (
+        <StudentPreview
+          files={previewFiles}
+          isOpen={isPreviewOpen}
+          onClose={() => setIsPreviewOpen(false)}
+          gradingResults={previewSession.results}
+          showResults={true}
+        />
+      )}
     </div>
   )
 }
