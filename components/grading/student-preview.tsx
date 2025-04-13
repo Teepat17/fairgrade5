@@ -120,13 +120,15 @@ export function StudentPreview({ files, isOpen, onClose, gradingResults, showRes
                   <CardContent>
                     <Progress 
                       value={currentResult.score} 
-                      className="h-2"
-                      indicatorClassName={getProgressColor(currentResult.score)}
+                      className="h-2" 
+                      indicatorClassName={getProgressColor(currentResult.score)} 
                     />
                     <Badge className={`mt-4 ${getFeedbackBadge(currentResult.score).class}`}>
                       {getFeedbackBadge(currentResult.score).text}
                     </Badge>
-                    <p className="mt-4 text-sm text-muted-foreground">{currentResult.feedback}</p>
+                    <div className="mt-4 text-sm text-muted-foreground whitespace-pre-wrap">
+                      {currentResult.feedback}
+                    </div>
                   </CardContent>
                 </Card>
 
@@ -137,8 +139,6 @@ export function StudentPreview({ files, isOpen, onClose, gradingResults, showRes
                   <CardContent className="space-y-6">
                     {currentResult.criteria.map((criterion, index) => {
                       const percentage = (criterion.score / criterion.maxScore) * 100;
-                      const feedbackParts = criterion.feedback.split("•").filter(part => part.trim() !== ""); // Split feedback into parts
-
                       return (
                         <div key={index} className="space-y-2">
                           <div className="flex items-start justify-between">
@@ -159,15 +159,11 @@ export function StudentPreview({ files, isOpen, onClose, gradingResults, showRes
                           </div>
                           <Progress 
                             value={percentage} 
-                            className="h-1"
-                            indicatorClassName={getProgressColor(percentage)}
+                            className="h-1" 
+                            indicatorClassName={getProgressColor(percentage)} 
                           />
-                          <div className="bg-muted/50 rounded-md p-3 mt-2">
-                            <ul className="list-disc list-inside space-y-2 text-sm">
-                              {feedbackParts.map((part, i) => (
-                                <li key={i}>{part.trim()}</li>
-                              ))}
-                            </ul>
+                          <div className="bg-muted/50 rounded-md p-3 mt-2 whitespace-pre-wrap">
+                            {criterion.feedback}
                           </div>
                         </div>
                       );
@@ -180,16 +176,23 @@ export function StudentPreview({ files, isOpen, onClose, gradingResults, showRes
                     <CardTitle className="text-lg">Suggestions for Improvement</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <ul className="list-disc list-inside space-y-2 text-sm">
+                    <div className="space-y-2 text-sm">
                       {currentResult.criteria
-                        .filter(c => (c.score / c.maxScore) * 100 < 80)
+                        .filter(c => (c.score / c.maxScore) * 100 < 70)
+                        .slice(0, 2)
                         .map((criterion, index) => (
-                          <li key={index}>
-                            <span className="font-medium">{criterion.name}:</span>{' '}
-                            Focus on improving {criterion.feedback.toLowerCase()}
-                          </li>
+                          <div key={index} className="space-y-1">
+                            <h4 className="font-medium">{criterion.name}:</h4>
+                            <ul className="list-disc list-inside pl-2 space-y-1 text-muted-foreground">
+                              {criterion.feedback.split('\n')
+                                .filter(line => line.trim().startsWith('•'))
+                                .map((point, i) => (
+                                  <li key={i}>{point.replace('•', '').trim()}</li>
+                                ))}
+                            </ul>
+                          </div>
                         ))}
-                    </ul>
+                    </div>
                   </CardContent>
                 </Card>
               </div>
