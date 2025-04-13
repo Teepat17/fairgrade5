@@ -177,7 +177,7 @@ async function gradeCriterion(answer: File, criterionName: string, maxScore: num
 }> {
   try {
     const prompt = `You are an expert ${subject} grader. Evaluate this exam based on: ${criterionName}\n\n"•" <- this is a bullet point\n\n 
-      do not include * or ** or bold text`
+      do not include * or ** or bold text also you have to include • in every end of section`
       + `• SCORE: [number between 0 and ${maxScore}]`
       + `• STRENGTHS:\n1 [point 1]\n`
       + `• WEAKNESSES:\n1 [point 1]\n`
