@@ -178,11 +178,11 @@ async function gradeCriterion(answer: File, criterionName: string, maxScore: num
   try {
     const prompt = `You are an expert ${subject} grader. Evaluate this exam based on: ${criterionName}\n\n"•" <- this is a bullet point\n\n 
       do not include * or ** or bold text`
-      + `•SCORE: [number between 0 and ${maxScore}]`
-      + `•STRENGTHS:\n1 [point 1] `
-      + `•WEAKNESSES:\n1 [point 1] `
-      + `•ANALYSIS:\n[2-3 sentences max]`
-      + `•SUGGESTIONS:\n [point 1]`;
+      + `• SCORE: [number between 0 and ${maxScore}]`
+      + `• STRENGTHS:\n1 [point 1]\n`
+      + `• WEAKNESSES:\n1 [point 1]\n`
+      + `• ANALYSIS:\n[2-3 sentences max]\n`
+      + `• SUGGESTIONS:\n [point 1]\n`;
     
     const response = await callAIAPIWithFile(answer, prompt);
     
