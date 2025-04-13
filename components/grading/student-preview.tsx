@@ -180,18 +180,93 @@ export function StudentPreview({ files, isOpen, onClose, gradingResults, showRes
                       {currentResult.criteria
                         .filter(c => (c.score / c.maxScore) * 100 < 70)
                         .slice(0, 2)
-                        .map((criterion, index) => (
-                          <div key={index} className="space-y-1">
-                            <h4 className="font-medium">{criterion.name}:</h4>
-                            <ul className="list-disc list-inside pl-2 space-y-1 text-muted-foreground">
-                              {criterion.feedback.split('\n')
-                                .filter(line => line.trim().startsWith('•'))
-                                .map((point, i) => (
-                                  <li key={i}>{point.replace('•', '').trim()}</li>
+                        .map((criterion, index) => {
+                          // Parse the feedback sections
+                          const feedbackLines = criterion.feedback.split('\n');
+                          
+                          // Extract all bullet points and split multi-item lines
+                          const bulletPoints = feedbackLines
+                            .filter(line => {
+                              const trimmed = line.trim();
+                              return trimmed.startsWith('•') || 
+                                     trimmed.startsWith('-') || 
+                                     /^\d+\./.test(trimmed);
+                            })
+                            .flatMap(line => {
+                              const trimmed = line.trim();
+                              // If the line contains multiple items separated by " - "
+                              if (trimmed.includes(' - ')) {
+                                // Split by " - " and create separate bullet points
+                                return trimmed.split(' - ').map(item => {
+                                  // Remove the bullet character from the first item
+                                  if (item.startsWith('•') || item.startsWith('-')) {
+                                    return item.substring(1).trim();
+                                  }
+                                  return item.trim();
+                                });
+                              }
+                              // Single item bullet point
+                              return [trimmed.replace(/^[•\-]\s*/, '').replace(/^\d+\.\s*/, '')];
+                            });
+                          
+                          // Get analysis if it exists
+                          const analysisIndex = feedbackLines.findIndex(line => 
+                            line.trim() === 'ANALYSIS:' || 
+                            line.trim() === 'ANALYSIS'
+                          );
+                          
+                          // Extract analysis points if they exist
+                          let analysisPoints: string[] = [];
+                          if (analysisIndex !== -1) {
+                            // Look for bullet points after ANALYSIS:
+                            for (let i = analysisIndex + 1; i < feedbackLines.length; i++) {
+                              const line = feedbackLines[i].trim();
+                              if (line.startsWith('•') || line.startsWith('-') || /^\d+\./.test(line)) {
+                                if (line.includes(' - ')) {
+                                  // Split multi-item analysis lines
+                                  const items = line.split(' - ').map(item => {
+                                    if (item.startsWith('•') || item.startsWith('-')) {
+                                      return item.substring(1).trim();
+                                    }
+                                    return item.trim();
+                                  });
+                                  analysisPoints.push(...items);
+                                } else {
+                                  analysisPoints.push(line.replace(/^[•\-]\s*/, '').replace(/^\d+\.\s*/, ''));
+                                }
+                              } else if (line === 'SUGGESTIONS:' || line === 'SUGGESTIONS') {
+                                break; // Stop when we reach the next section
+                              }
+                            }
+                          }
+                          
+                          return (
+                            <div key={index} className="space-y-1">
+                              <h4 className="font-medium">{criterion.name}:</h4>
+                              {analysisPoints.length > 0 && (
+                                <div className="mb-2">
+                                  <p className="font-medium text-muted-foreground">Analysis:</p>
+                                  <ul className="list-none pl-2 space-y-1 text-muted-foreground">
+                                    {analysisPoints.map((point, i) => (
+                                      <li key={i} className="flex items-start">
+                                        <span className="mr-2">•</span>
+                                        <span>{point}</span>
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              )}
+                              <ul className="list-none pl-2 space-y-1 text-muted-foreground">
+                                {bulletPoints.map((point, i) => (
+                                  <li key={i} className="flex items-start">
+                                    <span className="mr-2">•</span>
+                                    <span>{point}</span>
+                                  </li>
                                 ))}
-                            </ul>
-                          </div>
-                        ))}
+                              </ul>
+                            </div>
+                          );
+                        })}
                     </div>
                   </CardContent>
                 </Card>
