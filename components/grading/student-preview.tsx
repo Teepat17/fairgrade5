@@ -137,6 +137,8 @@ export function StudentPreview({ files, isOpen, onClose, gradingResults, showRes
                   <CardContent className="space-y-6">
                     {currentResult.criteria.map((criterion, index) => {
                       const percentage = (criterion.score / criterion.maxScore) * 100;
+                      const feedbackParts = criterion.feedback.split("•").filter(part => part.trim() !== ""); // Split feedback into parts
+
                       return (
                         <div key={index} className="space-y-2">
                           <div className="flex items-start justify-between">
@@ -161,7 +163,11 @@ export function StudentPreview({ files, isOpen, onClose, gradingResults, showRes
                             indicatorClassName={getProgressColor(percentage)}
                           />
                           <div className="bg-muted/50 rounded-md p-3 mt-2">
-                            <p className="text-sm">{criterion.feedback}</p>
+                            <ul className="list-disc list-inside space-y-2 text-sm">
+                              {feedbackParts.map((part, i) => (
+                                <li key={i}>{part.trim()}</li>
+                              ))}
+                            </ul>
                           </div>
                         </div>
                       );
@@ -193,4 +199,4 @@ export function StudentPreview({ files, isOpen, onClose, gradingResults, showRes
       </DialogContent>
     </Dialog>
   );
-} 
+}
