@@ -46,9 +46,8 @@ export function RubricSelector({ subject, onRubricChange }: RubricSelectorProps)
     switch (subject.toLowerCase()) {
       case 'english':
         return [
-          { name: 'Thesis and argument development', weight: 30 },
           { name: 'Evidence and supporting details', weight: 25 },
-          { name: 'Organization and structure', weight: 20 },
+          { name: 'Organization and structure', weight: 50 },
           { name: 'Grammar and mechanics', weight: 25 }
         ]
       case 'math':
