@@ -1,0 +1,9 @@
+<svg width="200" height="60" viewBox="0 0 200 60" xmlns="http://www.w3.org/2000/svg">
+  <style>
+    .text { font-family: Arial, sans-serif; font-weight: bold; }
+    .fair { fill: #2563eb; }
+    .grade { fill: #1e40af; }
+  </style>
+  <text x="10" y="40" class="text fair" font-size="36">Fair</text>
+  <text x="90" y="40" class="text grade" font-size="36">Grade</text>
+</svg> 

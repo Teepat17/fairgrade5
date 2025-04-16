@@ -1,5 +1,6 @@
 import type React from "react"
 import Image from "next/image"
+import { Logo } from "@/components/ui/logo"
 
 export default function AuthLayout({
   children,
@@ -10,7 +11,7 @@ export default function AuthLayout({
     <div className="min-h-screen flex flex-col md:flex-row">
       <div className="hidden md:flex md:w-1/2 bg-gradient-to-br from-blue-600 to-indigo-700 text-white p-10 flex-col justify-between">
         <div>
-          <h1 className="text-3xl font-bold">ExamGrade AI</h1>
+          <Logo width={180} height={48} />
           <p className="mt-2 text-blue-100">AI-powered exam grading for educators</p>
         </div>
         <div className="relative h-64 w-full">

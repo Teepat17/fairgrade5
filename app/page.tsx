@@ -3,6 +3,7 @@
 import { useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/contexts/auth-context"
+import { Logo } from "@/components/ui/logo"
 
 export default function HomePage() {
   const { user, loading } = useAuth()
@@ -19,7 +20,8 @@ export default function HomePage() {
   }, [user, loading, router])
 
   return (
-    <div className="flex h-screen w-full items-center justify-center">
+    <div className="flex h-screen w-full flex-col items-center justify-center gap-6">
+      <Logo width={200} height={60} />
       <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
     </div>
   )

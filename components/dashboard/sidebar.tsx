@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/sidebar"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
+import { Logo } from "@/components/ui/logo"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -79,25 +80,21 @@ export function DashboardSidebar() {
 
   return (
     <Sidebar>
-      <SidebarHeader className="flex items-center justify-between p-4">
-        <div className="flex items-center gap-2">
-          <div className="rounded-md bg-primary p-1">
-            <BookOpen className="h-6 w-6 text-primary-foreground" />
-          </div>
-          <span className="text-xl font-bold">ExamGrade AI</span>
-        </div>
-        <SidebarTrigger className="md:hidden" />
+      <SidebarHeader>
+        <Link href="/dashboard" className="flex items-center justify-center py-4">
+          <Logo width={120} height={32} />
+        </Link>
       </SidebarHeader>
       <SidebarContent>
         <SidebarMenu>
           {navigation.map((item) => (
             <SidebarMenuItem key={item.name}>
-              <SidebarMenuButton asChild isActive={item.current}>
-                <Link href={item.href}>
+              <Link href={item.href} className="w-full">
+                <SidebarMenuButton active={item.current}>
                   <item.icon className="h-5 w-5" />
                   <span>{item.name}</span>
-                </Link>
-              </SidebarMenuButton>
+                </SidebarMenuButton>
+              </Link>
             </SidebarMenuItem>
           ))}
         </SidebarMenu>
