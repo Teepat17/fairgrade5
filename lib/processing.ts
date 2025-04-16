@@ -130,7 +130,7 @@ async function callAIAPI(prompt: string): Promise<string> {
 }
 
 // Function to call the AI API with file
-export async function callAIAPIWithFile(file: File, prompt: string): Promise<string> {
+export async function callAIAPIWithFile(file: File, prompt: string, answerKey?: File): Promise<string> {
   const API_KEY = process.env.NEXT_PUBLIC_AI_API_KEY;
   const API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
 
@@ -138,21 +138,21 @@ export async function callAIAPIWithFile(file: File, prompt: string): Promise<str
     throw new Error('AI API key missing. Please check your .env.local file.');
   }
 
-  // Convert file to base64
-  const base64File = await fileToBase64(file);
+  try {
+    // Convert file to base64
+    const base64File = await fileToBase64(file);
+    let base64AnswerKey = '';
+    
+    if (answerKey) {
+      base64AnswerKey = await fileToBase64(answerKey);
+    }
 
-  return retryWithBackoff(async () => {
-    const response = await fetch(`${API_URL}?key=${API_KEY}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
+    return retryWithBackoff(async () => {
+      // Prepare the request body
+      const requestBody = {
         contents: [{
           parts: [
-            {
-              text: prompt
-            },
+            { text: prompt },
             {
               inline_data: {
                 mime_type: file.type,
@@ -185,40 +185,71 @@ export async function callAIAPIWithFile(file: File, prompt: string): Promise<str
             threshold: "BLOCK_MEDIUM_AND_ABOVE"
           }
         ]
-      })
+      };
+
+      // Add answer key if provided
+      if (base64AnswerKey) {
+        requestBody.contents[0].parts.push({
+          inline_data: {
+            mime_type: answerKey!.type,
+            data: base64AnswerKey.split(',')[1] // Remove the data URL prefix
+          }
+        });
+      }
+
+      const response = await fetch(`${API_URL}?key=${API_KEY}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('AI API error:', errorData);
+        throw new Error(`AI API request failed: ${response.statusText} - ${JSON.stringify(errorData)}`);
+      }
+
+      const data = await response.json();
+      if (!data.candidates?.[0]?.content?.parts?.[0]?.text) {
+        console.error('Invalid AI API response:', data);
+        throw new Error('Invalid AI API response format');
+      }
+
+      return data.candidates[0].content.parts[0].text;
     });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      console.error('AI API error:', errorData);
-      throw new Error(`AI API request failed: ${response.statusText} - ${JSON.stringify(errorData)}`);
-    }
-
-    const data = await response.json();
-    if (!data.candidates?.[0]?.content?.parts?.[0]?.text) {
-      console.error('Invalid AI API response:', data);
-      throw new Error('Invalid AI API response format');
-    }
-
-    return data.candidates[0].content.parts[0].text;
-  });
+  } catch (error) {
+    console.error('Error calling AI API:', error);
+    throw error;
+  }
 }
 
 // Modified gradeCriterion function to only handle files
-async function gradeCriterion(answer: File, criterionName: string, maxScore: number, subject: string): Promise<{
+async function gradeCriterion(answer: File, criterionName: string, maxScore: number, subject: string, answerKey?: File): Promise<{
   score: number;
   feedback: string;
 }> {
   try {
-    const prompt = `You are an kind and helpful expert ${subject} grader. Evaluate this exam based on: ${criterionName} answer in bullet point form
+    let prompt = `You are an kind and helpful expert ${subject} grader. Evaluate this exam based on: ${criterionName} answer in bullet point form
       do not include * or ** or bold text
       SCORE: [number between 0 and ${maxScore}]
       STRENGTHS: [summary point]
       WEAKNESSES: [summary point]
       ANALYSIS:[summary point]
       SUGGESTIONS: [summary point]`;
+
+    if (answerKey) {
+      prompt = `You are an kind and helpful expert ${subject} grader. Compare the student's answer with the provided answer key and evaluate based on: ${criterionName}
+        do not include * or ** or bold text
+        SCORE: [number between 0 and ${maxScore}]
+        STRENGTHS: [summary point]
+        WEAKNESSES: [summary point]
+        ANALYSIS: [Compare student's answer with the answer key, highlighting similarities and differences]
+        SUGGESTIONS: [summary point]`;
+    }
     
-    const response = await callAIAPIWithFile(answer, prompt);
+    const response = await callAIAPIWithFile(answer, prompt, answerKey);
     
     // Parse the response to extract score
     const scoreMatch = response.match(/SCORE:\s*(\d+)/i);
@@ -291,7 +322,8 @@ async function gradeCriterion(answer: File, criterionName: string, maxScore: num
 
 export async function processStudentAnswers(
   studentFiles: File[],
-  rubricText: string
+  rubricText: string,
+  answerKey?: File
 ): Promise<Array<{
   id: string;
   name: string;
@@ -313,7 +345,7 @@ export async function processStudentAnswers(
     const criteriaResults = [];
     for (const criterion of criteria) {
       const maxScore = criterion.weight;
-      const { score, feedback } = await gradeCriterion(file, criterion.name, maxScore, "");
+      const { score, feedback } = await gradeCriterion(file, criterion.name, maxScore, "", answerKey);
       criteriaResults.push({
         name: criterion.name,
         score,
