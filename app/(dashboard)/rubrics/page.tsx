@@ -95,7 +95,7 @@ export default function RubricsPage() {
     try {
       await saveRubric(rubric)
       const updatedRubrics = await getAllRubrics()
-      setRubrics(updatedRubrics)
+    setRubrics(updatedRubrics)
       setIsDialogOpen(false)
       toast.success(editingRubric ? "Rubric updated successfully" : "Rubric created successfully")
       setEditingRubric(null)
@@ -112,7 +112,7 @@ export default function RubricsPage() {
     try {
       await deleteRubric(id)
       const updatedRubrics = await getAllRubrics()
-      setRubrics(updatedRubrics)
+    setRubrics(updatedRubrics)
       toast.success("Rubric deleted successfully")
     } catch (error) {
       toast.error("Failed to delete rubric")
@@ -178,16 +178,16 @@ export default function RubricsPage() {
     <div className="container mx-auto py-8 px-4">
       <div className="flex flex-col space-y-6">
         <div className="flex justify-between items-center">
-          <h1 className="text-3xl font-bold">Rubrics</h1>
+            <h1 className="text-3xl font-bold">Rubrics</h1>
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
               <Button onClick={() => setEditingRubric(null)} className="flex items-center gap-2">
                 <Plus size={20} />
-                Create New Rubric
+              Create New Rubric
               </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-[700px]">
-              <DialogHeader>
+          <DialogHeader>
                 <DialogTitle className="text-2xl">
                   {editingRubric ? "Edit Rubric" : "Create New Rubric"}
                 </DialogTitle>
@@ -196,36 +196,36 @@ export default function RubricsPage() {
                     ? "Make changes to your rubric here. Click save when you're done."
                     : "Create a new rubric by filling out the information below."}
                 </DialogDescription>
-              </DialogHeader>
+          </DialogHeader>
               <form onSubmit={handleSaveRubric} className="space-y-6">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="name" className="text-sm font-medium">Name</Label>
-                    <Input
-                      id="name"
+                <Input
+                  id="name"
                       name="name"
                       defaultValue={editingRubric?.name}
                       placeholder="Enter a descriptive name"
                       className="mt-1"
                       required
-                    />
-                  </div>
+                />
+              </div>
                   <div>
                     <Label htmlFor="subject" className="text-sm font-medium">Subject</Label>
                     <Select name="subject" defaultValue={editingRubric?.subject || ""} required>
                       <SelectTrigger className="mt-1">
-                        <SelectValue placeholder="Select a subject" />
-                      </SelectTrigger>
-                      <SelectContent>
+                    <SelectValue placeholder="Select a subject" />
+                  </SelectTrigger>
+                  <SelectContent>
                         {SUBJECTS.map(subject => (
                           <SelectItem key={subject.value} value={subject.value}>
                             {subject.label}
                           </SelectItem>
                         ))}
-                      </SelectContent>
-                    </Select>
+                  </SelectContent>
+                </Select>
                   </div>
-                </div>
+              </div>
 
                 <div>
                   <div className="flex justify-between items-center mb-2">
@@ -298,18 +298,18 @@ export default function RubricsPage() {
                       Total: {criteria.reduce((sum, criterion) => sum + criterion.weight, 0)}%
                     </span>
                   </div>
-                </div>
+              </div>
 
-                <DialogFooter>
+          <DialogFooter>
                   <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
-                    Cancel
-                  </Button>
+              Cancel
+            </Button>
                   <Button type="submit">Save Rubric</Button>
-                </DialogFooter>
+          </DialogFooter>
               </form>
-            </DialogContent>
-          </Dialog>
-        </div>
+        </DialogContent>
+      </Dialog>
+            </div>
 
         <div className="flex flex-col md:flex-row gap-4 items-center">
           <div className="relative flex-1">
@@ -324,17 +324,17 @@ export default function RubricsPage() {
           <Select value={selectedSubject} onValueChange={setSelectedSubject}>
             <SelectTrigger className="w-[200px]">
               <SelectValue placeholder="Filter by subject" />
-            </SelectTrigger>
-            <SelectContent>
+                </SelectTrigger>
+                <SelectContent>
               <SelectItem value="all">All Subjects</SelectItem>
               {SUBJECTS.map(subject => (
                 <SelectItem key={subject.value} value={subject.value}>
                   {subject.label}
                 </SelectItem>
               ))}
-            </SelectContent>
-          </Select>
-        </div>
+                </SelectContent>
+              </Select>
+            </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredRubrics.map((rubric) => (
@@ -395,8 +395,8 @@ export default function RubricsPage() {
               </CardFooter>
             </Card>
           ))}
-        </div>
-      </div>
+            </div>
+          </div>
     </div>
   )
 }

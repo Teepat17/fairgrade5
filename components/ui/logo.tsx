@@ -7,16 +7,17 @@ interface LogoProps {
   className?: string;
   width?: number;
   height?: number;
+  forceWhite?: boolean;
 }
 
-export function Logo({ className, width = 150, height = 40 }: LogoProps) {
+export function Logo({ className, width = 150, height = 40, forceWhite = false }: LogoProps) {
   const { theme } = useTheme();
   
   return (
     <div className={className}>
-      {theme === "dark" ? (
+      {(theme === "dark" || forceWhite) ? (
         <Image
-          src="/images/fairgradewhite.svg"
+          src="/fairgradewhite.png"
           alt="FairGrade Logo"
           width={width}
           height={height}
@@ -24,7 +25,7 @@ export function Logo({ className, width = 150, height = 40 }: LogoProps) {
         />
       ) : (
         <Image
-          src="/images/fairgrade.svg"
+          src="/fairgrade.png"
           alt="FairGrade Logo"
           width={width}
           height={height}
