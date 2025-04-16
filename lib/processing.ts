@@ -91,10 +91,10 @@ async function retryWithBackoff<T>(
 // Function to call the AI API
 async function callAIAPI(prompt: string): Promise<string> {
   const API_KEY = process.env.NEXT_PUBLIC_AI_API_KEY;
-  const API_URL = process.env.NEXT_PUBLIC_AI_API_URL;
+  const API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
 
-  if (!API_KEY || !API_URL) {
-    throw new Error('AI API configuration missing. Please check your .env.local file.');
+  if (!API_KEY) {
+    throw new Error('AI API key missing. Please check your .env.local file.');
   }
 
   const response = await fetch(`${API_URL}?key=${API_KEY}`, {

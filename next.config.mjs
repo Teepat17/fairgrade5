@@ -27,6 +27,21 @@ const nextConfig = {
     parallelServerBuildTraces: true,
     parallelServerCompiles: true,
   },
+  // Add output configuration for Vercel
+  output: 'standalone',
+  // Add webpack configuration to handle Tesseract.js
+  webpack: (config, { isServer }) => {
+    // Handle Tesseract.js worker
+    if (!isServer) {
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        fs: false,
+        path: false,
+        crypto: false,
+      };
+    }
+    return config;
+  },
 }
 
 if (userConfig) {
